@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package voteRequestService;
+
+option go_package = "./voteRequestService";
+
+service VoteRequestService {
+    rpc Vote(VoteRequest) returns (VoteResponse);
+}
+
+message VoteRequest {
+    int32 term = 1;
+    string candidateId = 2;
+}
+
+message VoteResponse {
+    int32 term = 1;
+    bool granted = 2;
+}
