@@ -1,10 +1,10 @@
-package node
+package leaderElection
 
 import (
 	"log"
 	"net"
 
-	pb "LeaderElectionGo/node/voteRequestService"
+	pb "LeaderElectionGo/leaderElection/voteRequestService"
 
 	"google.golang.org/grpc"
 )

@@ -1,7 +1,7 @@
-package node
+package leaderElection
 
 import (
-	pb "LeaderElectionGo/node/voteRequestService"
+	pb "LeaderElectionGo/leaderElection/voteRequestService"
 )
 
 type Node struct {
