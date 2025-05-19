@@ -1,6 +1,7 @@
 package main
 
 import (
+	"LeaderElectionGo/leaderElection"
 	"fmt"
 )
 
@@ -11,4 +12,10 @@ func main() {
 
 	var numNodes int
 	fmt.Scanln(&numNodes)
+
+	leaderElection.NewNode("1", "localhost:50051")
+
+	for {
+
+	}
 }
