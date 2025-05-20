@@ -13,9 +13,8 @@ func main() {
 	var numNodes int
 	fmt.Scanln(&numNodes)
 
-	leaderElection.NewNode("1", "localhost:50051")
+	leaderElection.NewNode("1", "localhost:50051", nil)
 
 	for {
-
 	}
 }

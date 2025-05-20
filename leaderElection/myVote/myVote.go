@@ -1,7 +1,7 @@
 package myVote
 
 type SetVoteArg struct {
-	ID string
+	Vote string
 }
 
 type MyVote struct {
@@ -30,5 +30,5 @@ func NewMyVote() *MyVote {
 }
 
 func (myVote *MyVote) setVote(arg SetVoteArg) {
-	myVote.myVote = arg.ID
+	myVote.myVote = arg.Vote
 }

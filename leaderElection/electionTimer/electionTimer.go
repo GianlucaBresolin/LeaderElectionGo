@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+type ElectionTimeoutSignal struct{}
+
 type ElectionTimer struct {
 	minElectionTimeout int
 	maxElectionTimeout int
@@ -14,7 +16,7 @@ type ElectionTimer struct {
 
 	SetMinTimeoutReq chan int
 	SetMaxTimeoutReq chan int
-	StartReq         chan struct{}
+	StartReq         chan chan ElectionTimeoutSignal
 	StopReq          chan struct{}
 	ResetReq         chan struct{}
 }
@@ -25,6 +27,7 @@ func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
 		maxElectionTimeout: maxTimeout,
 		SetMinTimeoutReq:   make(chan int),
 		SetMaxTimeoutReq:   make(chan int),
+		StartReq:           make(chan chan ElectionTimeoutSignal),
 		ResetReq:           make(chan struct{}),
 		StopReq:            make(chan struct{}),
 	}
@@ -36,8 +39,8 @@ func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
 				electionTimer.minElectionTimeout = minTimeout
 			case maxTimeout := <-electionTimer.SetMaxTimeoutReq:
 				electionTimer.maxElectionTimeout = maxTimeout
-			case <-electionTimer.StartReq:
-				electionTimer.start()
+			case signalCh := <-electionTimer.StartReq:
+				electionTimer.start(signalCh)
 			case <-electionTimer.StopReq:
 				electionTimer.stop()
 			case <-electionTimer.ResetReq:
@@ -49,9 +52,16 @@ func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
 	return &electionTimer
 }
 
-func (electionTimer *ElectionTimer) start() {
+func (electionTimer *ElectionTimer) start(signalCh chan ElectionTimeoutSignal) {
 	timeout := rand.Intn(electionTimer.maxElectionTimeout-electionTimer.minElectionTimeout) + electionTimer.minElectionTimeout
 	electionTimer.timer = time.NewTimer(time.Duration(timeout) * time.Millisecond)
+
+	go func() {
+		select {
+		case <-electionTimer.timer.C:
+			signalCh <- ElectionTimeoutSignal{}
+		}
+	}()
 }
 
 func (electionTimer *ElectionTimer) stop() {

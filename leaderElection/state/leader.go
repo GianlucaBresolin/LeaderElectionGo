@@ -1,5 +1,5 @@
 package state
 
-func (self *State) handleLeaderRequest() {
-	// TODO
+func (state *State) handleLeaderRequest() {
+	state.value = "leader"
 }

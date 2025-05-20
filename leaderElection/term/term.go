@@ -4,14 +4,16 @@ import (
 	"log"
 )
 
+type IncrementSignal struct{}
+
 type Term struct {
 	currentTerm int
-	IncReq      chan struct{}
+	IncReq      chan IncrementSignal
 	SetValueReq chan int
 }
 
 func NewTerm() *Term {
-	incReq := make(chan struct{})
+	incReq := make(chan IncrementSignal)
 
 	term := Term{
 		currentTerm: 0,

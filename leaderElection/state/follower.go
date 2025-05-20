@@ -1,5 +1,5 @@
 package state
 
-func (self *State) handleFollowerRequest() {
-	// TODO
+func (state *State) handleFollowerRequest() {
+	state.value = "follower"
 }
