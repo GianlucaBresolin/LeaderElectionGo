@@ -1,16 +1,23 @@
 package myVote
 
-type SetVoteArg struct {
-	Vote string
+type SetVoteSignal struct {
+	Vote       string
+	ResponseCh chan<- bool
+}
+type ResetSignal struct{}
+type ReadMyVoteSignal struct {
+	ResponseCh chan<- string
 }
 
 type MyVote struct {
-	myVote     string
-	SetVoteReq chan SetVoteArg
+	myVote        string
+	SetVoteReq    <-chan SetVoteSignal
+	ResetReq      <-chan ResetSignal
+	ReadMyVoteReq <-chan ReadMyVoteSignal
 }
 
 func NewMyVote() *MyVote {
-	setVoteReq := make(chan SetVoteArg)
+	setVoteReq := make(chan SetVoteSignal)
 
 	myVote := MyVote{
 		myVote:     "",
@@ -20,8 +27,12 @@ func NewMyVote() *MyVote {
 	go func() {
 		for {
 			select {
-			case arg := <-setVoteReq:
-				myVote.setVote(arg)
+			case signal := <-setVoteReq:
+				myVote.setVote(signal)
+			case <-myVote.ResetReq:
+				myVote.myVote = ""
+			case signal := <-myVote.ReadMyVoteReq:
+				signal.ResponseCh <- myVote.myVote
 			}
 		}
 	}()
@@ -29,6 +40,13 @@ func NewMyVote() *MyVote {
 	return &myVote
 }
 
-func (myVote *MyVote) setVote(arg SetVoteArg) {
-	myVote.myVote = arg.Vote
+func (myVote *MyVote) setVote(signal SetVoteSignal) {
+	if myVote.myVote != "" {
+		// we altready voted
+		signal.ResponseCh <- false
+		return
+	}
+	// set the vote successfully
+	myVote.myVote = signal.Vote
+	signal.ResponseCh <- true
 }
