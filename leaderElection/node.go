@@ -19,12 +19,13 @@ type Node struct {
 	voteCount     *voteCount.VoteCount
 	myVote        *myVote.MyVote
 
-	configurationMap map[string]string // map[nodeID]address
+	configurationMap map[string]connectionData // map[nodeID]connectionData
+	CloseCh          chan CloseSignal
 
 	pb.UnimplementedVoteRequestServiceServer
 }
 
-func NewNode(id string, address string, configurationMap map[string]string) *Node {
+func NewNode(id string, address string, configurationMap map[string]connectionData) *Node {
 	node := Node{
 		ID:               id,
 		address:          address,
@@ -34,9 +35,11 @@ func NewNode(id string, address string, configurationMap map[string]string) *Nod
 		voteCount:        voteCount.NewVoteCount(),
 		myVote:           myVote.NewMyVote(),
 		configurationMap: configurationMap,
+		CloseCh:          make(chan CloseSignal),
 	}
 
-	//node.prepareConnections()
+	node.prepareServer()
+	node.prepareConnections()
 
 	go node.run()
 

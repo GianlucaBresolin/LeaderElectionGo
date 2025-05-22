@@ -7,6 +7,8 @@ import (
 )
 
 type ElectionTimeoutSignal struct{}
+type ResetSignal struct{}
+type StopSignal struct{}
 
 type ElectionTimer struct {
 	minElectionTimeout int
@@ -17,8 +19,8 @@ type ElectionTimer struct {
 	SetMinTimeoutReq chan int
 	SetMaxTimeoutReq chan int
 	StartReq         chan chan ElectionTimeoutSignal
-	StopReq          chan struct{}
-	ResetReq         chan struct{}
+	StopReq          chan StopSignal
+	ResetReq         chan ResetSignal
 }
 
 func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
@@ -28,8 +30,8 @@ func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
 		SetMinTimeoutReq:   make(chan int),
 		SetMaxTimeoutReq:   make(chan int),
 		StartReq:           make(chan chan ElectionTimeoutSignal),
-		ResetReq:           make(chan struct{}),
-		StopReq:            make(chan struct{}),
+		ResetReq:           make(chan ResetSignal),
+		StopReq:            make(chan StopSignal),
 	}
 
 	go func() {
@@ -57,10 +59,9 @@ func (electionTimer *ElectionTimer) start(signalCh chan ElectionTimeoutSignal) {
 	electionTimer.timer = time.NewTimer(time.Duration(timeout) * time.Millisecond)
 
 	go func() {
-		select {
-		case <-electionTimer.timer.C:
-			signalCh <- ElectionTimeoutSignal{}
-		}
+		<-electionTimer.timer.C
+		// timout has occurred
+		signalCh <- ElectionTimeoutSignal{}
 	}()
 }
 

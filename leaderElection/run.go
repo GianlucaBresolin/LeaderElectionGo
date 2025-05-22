@@ -13,6 +13,10 @@ func (node *Node) run() {
 			case <-electionTimeoutCh:
 				// handle election timout: start a new election
 				node.startElection()
+			case <-node.CloseCh:
+				// handle close signal:
+				// close connections to other nodes
+				node.closeConnections()
 			}
 		}
 	}()

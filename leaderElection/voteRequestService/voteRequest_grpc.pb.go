@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v5.29.3
-// source: voteRequestService.proto
+// source: voteRequest.proto
 
 package voteRequestService
 
@@ -19,14 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	VoteRequestService_Vote_FullMethodName = "/voteRequestService.VoteRequestService/Vote"
+	VoteRequestService_VoteRequestGRPC_FullMethodName = "/voteRequestService.VoteRequestService/VoteRequestGRPC"
 )
 
 // VoteRequestServiceClient is the client API for VoteRequestService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type VoteRequestServiceClient interface {
-	Vote(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*VoteResponse, error)
+	VoteRequestGRPC(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*VoteResponse, error)
 }
 
 type voteRequestServiceClient struct {
@@ -37,10 +37,10 @@ func NewVoteRequestServiceClient(cc grpc.ClientConnInterface) VoteRequestService
 	return &voteRequestServiceClient{cc}
 }
 
-func (c *voteRequestServiceClient) Vote(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*VoteResponse, error) {
+func (c *voteRequestServiceClient) VoteRequestGRPC(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*VoteResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(VoteResponse)
-	err := c.cc.Invoke(ctx, VoteRequestService_Vote_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, VoteRequestService_VoteRequestGRPC_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (c *voteRequestServiceClient) Vote(ctx context.Context, in *VoteRequest, op
 // All implementations must embed UnimplementedVoteRequestServiceServer
 // for forward compatibility.
 type VoteRequestServiceServer interface {
-	Vote(context.Context, *VoteRequest) (*VoteResponse, error)
+	VoteRequestGRPC(context.Context, *VoteRequest) (*VoteResponse, error)
 	mustEmbedUnimplementedVoteRequestServiceServer()
 }
 
@@ -62,8 +62,8 @@ type VoteRequestServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedVoteRequestServiceServer struct{}
 
-func (UnimplementedVoteRequestServiceServer) Vote(context.Context, *VoteRequest) (*VoteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Vote not implemented")
+func (UnimplementedVoteRequestServiceServer) VoteRequestGRPC(context.Context, *VoteRequest) (*VoteResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VoteRequestGRPC not implemented")
 }
 func (UnimplementedVoteRequestServiceServer) mustEmbedUnimplementedVoteRequestServiceServer() {}
 func (UnimplementedVoteRequestServiceServer) testEmbeddedByValue()                            {}
@@ -86,20 +86,20 @@ func RegisterVoteRequestServiceServer(s grpc.ServiceRegistrar, srv VoteRequestSe
 	s.RegisterService(&VoteRequestService_ServiceDesc, srv)
 }
 
-func _VoteRequestService_Vote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _VoteRequestService_VoteRequestGRPC_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(VoteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(VoteRequestServiceServer).Vote(ctx, in)
+		return srv.(VoteRequestServiceServer).VoteRequestGRPC(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: VoteRequestService_Vote_FullMethodName,
+		FullMethod: VoteRequestService_VoteRequestGRPC_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(VoteRequestServiceServer).Vote(ctx, req.(*VoteRequest))
+		return srv.(VoteRequestServiceServer).VoteRequestGRPC(ctx, req.(*VoteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -112,10 +112,10 @@ var VoteRequestService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*VoteRequestServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Vote",
-			Handler:    _VoteRequestService_Vote_Handler,
+			MethodName: "VoteRequestGRPC",
+			Handler:    _VoteRequestService_VoteRequestGRPC_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "voteRequestService.proto",
+	Metadata: "voteRequest.proto",
 }

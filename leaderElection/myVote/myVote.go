@@ -11,9 +11,9 @@ type ReadMyVoteSignal struct {
 
 type MyVote struct {
 	myVote        string
-	SetVoteReq    <-chan SetVoteSignal
-	ResetReq      <-chan ResetSignal
-	ReadMyVoteReq <-chan ReadMyVoteSignal
+	SetVoteReq    chan SetVoteSignal
+	ResetReq      chan ResetSignal
+	ReadMyVoteReq chan ReadMyVoteSignal
 }
 
 func NewMyVote() *MyVote {
