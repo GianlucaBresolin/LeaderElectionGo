@@ -4,12 +4,15 @@ import (
 	"log"
 )
 
-type IncrementSignal struct{}
+type IncrementSignal struct {
+	ResponseCh chan int
+}
 
 type Term struct {
 	currentTerm int
 	IncReq      chan IncrementSignal
 	SetValueReq chan int
+	GetTermReq  chan chan int
 }
 
 func NewTerm() *Term {
@@ -23,10 +26,12 @@ func NewTerm() *Term {
 	go func() {
 		for {
 			select {
-			case <-incReq:
-				term.inc()
+			case signal := <-incReq:
+				term.inc(signal)
 			case value := <-term.SetValueReq:
 				term.setValue(value)
+			case responseCh := <-term.GetTermReq:
+				responseCh <- term.currentTerm
 			}
 		}
 	}()
@@ -34,8 +39,13 @@ func NewTerm() *Term {
 	return &term
 }
 
-func (t *Term) inc() {
+func (t *Term) inc(signal IncrementSignal) {
 	t.currentTerm++
+
+	// if the response channel is present, send the current term back
+	if signal.ResponseCh != nil {
+		signal.ResponseCh <- t.currentTerm
+	}
 }
 
 func (t *Term) setValue(value int) {
