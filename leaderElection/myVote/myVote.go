@@ -19,7 +19,7 @@ type MyVote struct {
 func NewMyVote() *MyVote {
 	setVoteReq := make(chan SetVoteSignal)
 
-	myVote := MyVote{
+	myVote := &MyVote{
 		myVote:     "",
 		SetVoteReq: setVoteReq,
 	}
@@ -37,7 +37,7 @@ func NewMyVote() *MyVote {
 		}
 	}()
 
-	return &myVote
+	return myVote
 }
 
 func (myVote *MyVote) setVote(signal SetVoteSignal) {

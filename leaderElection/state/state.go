@@ -16,7 +16,7 @@ func NewState() *State {
 	leaderCh := make(chan LeaderSignal)
 	followerCh := make(chan FollowerSignal)
 
-	state := State{
+	state := &State{
 		value:       "follower", // initally the state is set to be follwer
 		FollowerCh:  followerCh,
 		CandidateCh: candidateCh,
@@ -36,5 +36,5 @@ func NewState() *State {
 		}
 	}()
 
-	return &state
+	return state
 }

@@ -19,7 +19,6 @@ type connectionData struct {
 type CloseSignal struct{}
 
 func (node *Node) prepareServer() {
-
 	listener, err := net.Listen("tcp", node.address)
 	if err != nil {
 		log.Fatalf("Error starting listener: %v.", err)
@@ -30,9 +29,11 @@ func (node *Node) prepareServer() {
 	// voteRequestServiceServer
 	pb.RegisterVoteRequestServiceServer(grpcServer, node)
 
-	if err := grpcServer.Serve(listener); err != nil {
-		log.Fatalf("Error starting gRPC server: %v.", err)
-	}
+	go func() {
+		if err := grpcServer.Serve(listener); err != nil {
+			log.Fatalf("Error %s serving gRPC server: %v.", node.ID, err)
+		}
+	}()
 	log.Printf("Node %s is listening on %s.", node.ID, node.address)
 }
 

@@ -22,7 +22,7 @@ func NewVoteCount() *VoteCount {
 	addVoteReq := make(chan AddVoteSignal)
 	resetReq := make(chan ResetSignal)
 
-	voteCount := VoteCount{
+	voteCount := &VoteCount{
 		voteCount:  0,
 		term:       0,
 		voterMap:   make(map[string]struct{}),
@@ -41,7 +41,7 @@ func NewVoteCount() *VoteCount {
 		}
 	}()
 
-	return &voteCount
+	return voteCount
 }
 
 func (voteCount *VoteCount) addVote(signal AddVoteSignal) {

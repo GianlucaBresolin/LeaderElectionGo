@@ -2,18 +2,17 @@ package main
 
 import (
 	"LeaderElectionGo/leaderElection"
-	"fmt"
 )
 
 func main() {
+	addressMap := make(map[string]string)
+	addressMap["1"] = "localhost:50051"
+	addressMap["2"] = "localhost:50052"
+	addressMap["3"] = "localhost:50053"
 
-	// number of nodes
-	fmt.Println("How many nodes do you want to run in the cluster?")
-
-	var numNodes int
-	fmt.Scanln(&numNodes)
-
-	leaderElection.NewNode("1", "localhost:50051", nil)
+	leaderElection.NewNode("1", "localhost:50051", addressMap)
+	leaderElection.NewNode("2", "localhost:50052", addressMap)
+	leaderElection.NewNode("3", "localhost:50053", addressMap)
 
 	for {
 	}

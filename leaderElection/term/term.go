@@ -18,7 +18,7 @@ type Term struct {
 func NewTerm() *Term {
 	incReq := make(chan IncrementSignal)
 
-	term := Term{
+	term := &Term{
 		currentTerm: 0,
 		IncReq:      incReq,
 	}
@@ -36,7 +36,7 @@ func NewTerm() *Term {
 		}
 	}()
 
-	return &term
+	return term
 }
 
 func (t *Term) inc(signal IncrementSignal) {

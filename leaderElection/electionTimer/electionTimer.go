@@ -24,7 +24,7 @@ type ElectionTimer struct {
 }
 
 func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
-	electionTimer := ElectionTimer{
+	electionTimer := &ElectionTimer{
 		minElectionTimeout: minTimeout,
 		maxElectionTimeout: maxTimeout,
 		SetMinTimeoutReq:   make(chan int),
@@ -51,7 +51,7 @@ func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
 		}
 	}()
 
-	return &electionTimer
+	return electionTimer
 }
 
 func (electionTimer *ElectionTimer) start(signalCh chan ElectionTimeoutSignal) {

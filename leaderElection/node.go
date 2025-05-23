@@ -25,8 +25,17 @@ type Node struct {
 	pb.UnimplementedVoteRequestServiceServer
 }
 
-func NewNode(id string, address string, configurationMap map[string]connectionData) *Node {
-	node := Node{
+func NewNode(id string, address string, addressMap map[string]string) *Node {
+	// build the configurationMap from the addressMap
+	configurationMap := make(map[string]connectionData)
+	for nodeID, address := range addressMap {
+		configurationMap[nodeID] = connectionData{
+			address:    address,
+			connection: nil,
+		}
+	}
+
+	node := &Node{
 		ID:               id,
 		address:          address,
 		state:            state.NewState(),
@@ -43,5 +52,5 @@ func NewNode(id string, address string, configurationMap map[string]connectionDa
 
 	go node.run()
 
-	return &node
+	return node
 }
