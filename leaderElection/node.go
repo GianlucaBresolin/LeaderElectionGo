@@ -41,7 +41,7 @@ func NewNode(id string, address string, addressMap map[string]string) *Node {
 		state:            state.NewState(),
 		currentTerm:      term.NewTerm(),
 		electionTimer:    electionTimer.NewElectionTimer(150, 300),
-		voteCount:        voteCount.NewVoteCount(),
+		voteCount:        voteCount.NewVoteCount(addressMap),
 		myVote:           myVote.NewMyVote(),
 		configurationMap: configurationMap,
 		CloseCh:          make(chan CloseSignal),
