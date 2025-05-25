@@ -53,7 +53,7 @@ func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
 	if signal.Term != voteCount.term {
 		log.Println("Vote count add request ignored: term is not equal to current term")
 	} else {
-		if _, votedFlag := voteCount.voterMap[signal.VoterID]; votedFlag {
+		if votedFlag := voteCount.voterMap[signal.VoterID]; votedFlag {
 			// idempotency behavior: if the voter has already voted, do nothing
 			return
 		}

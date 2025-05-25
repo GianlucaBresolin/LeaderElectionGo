@@ -21,6 +21,8 @@ func NewTerm() *Term {
 	term := &Term{
 		currentTerm: 0,
 		IncReq:      incReq,
+		SetValueReq: make(chan int),
+		GetTermReq:  make(chan chan int),
 	}
 
 	go func() {
