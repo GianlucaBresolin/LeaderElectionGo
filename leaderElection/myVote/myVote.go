@@ -17,17 +17,17 @@ type MyVote struct {
 }
 
 func NewMyVote() *MyVote {
-	setVoteReq := make(chan SetVoteSignal)
-
 	myVote := &MyVote{
-		myVote:     "",
-		SetVoteReq: setVoteReq,
+		myVote:        "",
+		SetVoteReq:    make(chan SetVoteSignal),
+		ResetReq:      make(chan ResetSignal),
+		ReadMyVoteReq: make(chan ReadMyVoteSignal),
 	}
 
 	go func() {
 		for {
 			select {
-			case signal := <-setVoteReq:
+			case signal := <-myVote.SetVoteReq:
 				myVote.setVote(signal)
 			case <-myVote.ResetReq:
 				myVote.myVote = ""

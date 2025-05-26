@@ -7,33 +7,37 @@ import (
 type IncrementSignal struct {
 	ResponseCh chan int
 }
+type SetValueSignal struct {
+	Value int
+}
+type GetTermSignal struct {
+	ResponseCh chan int
+}
 
 type Term struct {
 	currentTerm int
 	IncReq      chan IncrementSignal
-	SetValueReq chan int
-	GetTermReq  chan chan int
+	SetValueReq chan SetValueSignal
+	GetTermReq  chan GetTermSignal
 }
 
 func NewTerm() *Term {
-	incReq := make(chan IncrementSignal)
-
 	term := &Term{
 		currentTerm: 0,
-		IncReq:      incReq,
-		SetValueReq: make(chan int),
-		GetTermReq:  make(chan chan int),
+		IncReq:      make(chan IncrementSignal),
+		SetValueReq: make(chan SetValueSignal),
+		GetTermReq:  make(chan GetTermSignal),
 	}
 
 	go func() {
 		for {
 			select {
-			case signal := <-incReq:
+			case signal := <-term.IncReq:
 				term.inc(signal)
-			case value := <-term.SetValueReq:
-				term.setValue(value)
-			case responseCh := <-term.GetTermReq:
-				responseCh <- term.currentTerm
+			case signal := <-term.SetValueReq:
+				term.setValue(signal)
+			case signal := <-term.GetTermReq:
+				signal.ResponseCh <- term.currentTerm
 			}
 		}
 	}()
@@ -50,10 +54,10 @@ func (t *Term) inc(signal IncrementSignal) {
 	}
 }
 
-func (t *Term) setValue(value int) {
-	if value > t.currentTerm {
-		t.currentTerm = value
+func (t *Term) setValue(signal SetValueSignal) {
+	if signal.Value > t.currentTerm {
+		t.currentTerm = signal.Value
 	} else {
-		log.Printf("Received a term value (%d) that is not greater than the current term (%d)", value, t.currentTerm)
+		log.Printf("Received a term value (%d) that is not greater than the current term (%d)", signal.Value, t.currentTerm)
 	}
 }

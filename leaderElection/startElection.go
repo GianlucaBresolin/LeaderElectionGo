@@ -27,10 +27,21 @@ func (node *Node) startElection() {
 	}
 
 	// vote for myself
+	becomeLeaderCh := make(chan bool)
 	node.voteCount.AddVoteReq <- voteCount.AddVoteSignal{
-		Term:    term,
-		VoterID: node.ID,
+		Term:           term,
+		VoterID:        node.ID,
+		BecomeLeaderCh: becomeLeaderCh,
 	}
+
+	// checks if we can become the leader
+	if becomeLeaderFlag := <-becomeLeaderCh; becomeLeaderFlag {
+		// we can become the leader
+		node.state.LeaderCh <- state.LeaderSignal{}
+		log.Printf("Node %s has become the leader for term %d", node.ID, term)
+	}
+	// else we did not get enough votes to become leader
+
 	node.myVote.SetVoteReq <- myVote.SetVoteSignal{
 		Vote: node.ID,
 	}

@@ -3,8 +3,9 @@ package voteCount
 import "log"
 
 type AddVoteSignal struct {
-	Term    int
-	VoterID string
+	Term           int
+	VoterID        string
+	BecomeLeaderCh chan bool
 }
 type ResetSignal struct {
 	Term int
@@ -19,15 +20,12 @@ type VoteCount struct {
 }
 
 func NewVoteCount(configurationMap map[string]string) *VoteCount {
-	addVoteReq := make(chan AddVoteSignal)
-	resetReq := make(chan ResetSignal)
-
 	voteCount := &VoteCount{
 		voteCount:  0,
 		term:       0,
 		voterMap:   make(map[string]bool),
-		AddVoteReq: addVoteReq,
-		ResetReq:   resetReq,
+		AddVoteReq: make(chan AddVoteSignal),
+		ResetReq:   make(chan ResetSignal),
 	}
 
 	// build the voterMap from teh configurationMap
@@ -38,9 +36,9 @@ func NewVoteCount(configurationMap map[string]string) *VoteCount {
 	go func() {
 		for {
 			select {
-			case signal := <-addVoteReq:
+			case signal := <-voteCount.AddVoteReq:
 				voteCount.addVote(signal)
-			case signal := <-resetReq:
+			case signal := <-voteCount.ResetReq:
 				voteCount.reset(signal)
 			}
 		}
@@ -50,6 +48,7 @@ func NewVoteCount(configurationMap map[string]string) *VoteCount {
 }
 
 func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
+	log.Println("Received vote count add request:", signal)
 	if signal.Term != voteCount.term {
 		log.Println("Vote count add request ignored: term is not equal to current term")
 	} else {
@@ -62,7 +61,11 @@ func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
 
 		if voteCount.voteCount > len(voteCount.voterMap)/2 {
 			log.Printf("Reached majority of votes in the cluster.")
+			signal.BecomeLeaderCh <- true
+			return
 		}
+		// not enough votes to become leader yet
+		signal.BecomeLeaderCh <- false
 	}
 }
 

@@ -12,25 +12,21 @@ type State struct {
 }
 
 func NewState() *State {
-	candidateCh := make(chan CandidateSignal)
-	leaderCh := make(chan LeaderSignal)
-	followerCh := make(chan FollowerSignal)
-
 	state := &State{
 		value:       "follower", // initally the state is set to be follwer
-		FollowerCh:  followerCh,
-		CandidateCh: candidateCh,
-		LeaderCh:    leaderCh,
+		FollowerCh:  make(chan FollowerSignal),
+		CandidateCh: make(chan CandidateSignal),
+		LeaderCh:    make(chan LeaderSignal),
 	}
 
 	go func() {
 		for {
 			select {
-			case <-followerCh:
+			case <-state.FollowerCh:
 				state.value = "follower"
-			case <-candidateCh:
+			case <-state.CandidateCh:
 				state.value = "candidate"
-			case <-leaderCh:
+			case <-state.LeaderCh:
 				state.value = "leader"
 			}
 		}

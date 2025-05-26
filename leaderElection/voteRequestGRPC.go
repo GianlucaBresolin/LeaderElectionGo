@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"LeaderElectionGo/leaderElection/myVote"
+	"LeaderElectionGo/leaderElection/term"
 	pb "LeaderElectionGo/leaderElection/voteRequestService"
 )
 
@@ -17,7 +18,9 @@ func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb
 
 	// read the current term
 	currentTermCh := make(chan int)
-	node.currentTerm.GetTermReq <- currentTermCh
+	node.currentTerm.GetTermReq <- term.GetTermSignal{
+		ResponseCh: currentTermCh,
+	}
 	currentTerm := <-currentTermCh
 
 	// check if the term is valid
