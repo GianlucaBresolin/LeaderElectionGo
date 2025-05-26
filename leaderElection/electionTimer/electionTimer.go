@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+type SetMinTimeoutSignal struct {
+	MinTimeout int
+}
+type SetMaxTimeoutSignal struct {
+	MaxTimeout int
+}
 type ElectionTimeoutSignal struct{}
 type ResetSignal struct{}
 type StopSignal struct{}
@@ -16,19 +22,25 @@ type ElectionTimer struct {
 
 	timer *time.Timer
 
-	SetMinTimeoutReq chan int
-	SetMaxTimeoutReq chan int
+	SetMinTimeoutReq chan SetMinTimeoutSignal
+	SetMaxTimeoutReq chan SetMaxTimeoutSignal
 	StartReq         chan chan ElectionTimeoutSignal
 	StopReq          chan StopSignal
 	ResetReq         chan ResetSignal
 }
 
 func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
+	if minTimeout <= 0 || maxTimeout <= 0 {
+		// set default values if valid values are not provided
+		minTimeout = 150
+		maxTimeout = 300
+	}
+
 	electionTimer := &ElectionTimer{
 		minElectionTimeout: minTimeout,
 		maxElectionTimeout: maxTimeout,
-		SetMinTimeoutReq:   make(chan int),
-		SetMaxTimeoutReq:   make(chan int),
+		SetMinTimeoutReq:   make(chan SetMinTimeoutSignal),
+		SetMaxTimeoutReq:   make(chan SetMaxTimeoutSignal),
 		StartReq:           make(chan chan ElectionTimeoutSignal),
 		ResetReq:           make(chan ResetSignal),
 		StopReq:            make(chan StopSignal),
@@ -37,10 +49,10 @@ func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
 	go func() {
 		for {
 			select {
-			case minTimeout := <-electionTimer.SetMinTimeoutReq:
-				electionTimer.minElectionTimeout = minTimeout
-			case maxTimeout := <-electionTimer.SetMaxTimeoutReq:
-				electionTimer.maxElectionTimeout = maxTimeout
+			case signal := <-electionTimer.SetMinTimeoutReq:
+				electionTimer.minElectionTimeout = signal.MinTimeout
+			case signal := <-electionTimer.SetMaxTimeoutReq:
+				electionTimer.maxElectionTimeout = signal.MaxTimeout
 			case signalCh := <-electionTimer.StartReq:
 				electionTimer.start(signalCh)
 			case <-electionTimer.StopReq:
