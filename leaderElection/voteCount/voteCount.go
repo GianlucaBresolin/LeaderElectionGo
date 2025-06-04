@@ -15,6 +15,7 @@ type VoteCount struct {
 	voteCount  int
 	term       int
 	voterMap   map[string]bool
+	leaderFlag bool
 	AddVoteReq chan AddVoteSignal
 	ResetReq   chan ResetSignal
 }
@@ -24,6 +25,7 @@ func NewVoteCount(configurationMap map[string]string) *VoteCount {
 		voteCount:  0,
 		term:       0,
 		voterMap:   make(map[string]bool),
+		leaderFlag: false,
 		AddVoteReq: make(chan AddVoteSignal),
 		ResetReq:   make(chan ResetSignal),
 	}
@@ -59,12 +61,13 @@ func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
 		voteCount.voteCount++
 		voteCount.voterMap[signal.VoterID] = true
 
-		if voteCount.voteCount > len(voteCount.voterMap)/2 {
+		if voteCount.voteCount > len(voteCount.voterMap)/2 && !voteCount.leaderFlag {
 			log.Printf("Reached majority of votes in the cluster.")
+			voteCount.leaderFlag = true
 			signal.BecomeLeaderCh <- true
 			return
 		}
-		// not enough votes to become leader yet
+		// not enough votes to become leader yet or already a leader
 		signal.BecomeLeaderCh <- false
 	}
 }
@@ -76,6 +79,7 @@ func (voteCount *VoteCount) reset(signal ResetSignal) {
 		for voterID := range voteCount.voterMap {
 			voteCount.voterMap[voterID] = false
 		}
+		voteCount.leaderFlag = false
 	} else {
 		log.Println("Vote count reset request ignored: term is not greater than current term")
 	}

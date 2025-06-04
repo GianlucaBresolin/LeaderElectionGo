@@ -1,6 +1,7 @@
 package leaderElection
 
 import (
+	"LeaderElectionGo/leaderElection/currentLeader"
 	"LeaderElectionGo/leaderElection/electionTimer"
 	"LeaderElectionGo/leaderElection/myVote"
 	"LeaderElectionGo/leaderElection/state"
@@ -18,6 +19,7 @@ type Node struct {
 	electionTimer *electionTimer.ElectionTimer
 	voteCount     *voteCount.VoteCount
 	myVote        *myVote.MyVote
+	currentLeader *currentLeader.CurrentLeader
 
 	configurationMap map[string]connectionData // map[nodeID]connectionData
 	CloseCh          chan CloseSignal
@@ -43,6 +45,7 @@ func NewNode(id string, address string, addressMap map[string]string) *Node {
 		electionTimer:    electionTimer.NewElectionTimer(150, 300),
 		voteCount:        voteCount.NewVoteCount(addressMap),
 		myVote:           myVote.NewMyVote(),
+		currentLeader:    currentLeader.NewCurrentLeader(),
 		configurationMap: configurationMap,
 		CloseCh:          make(chan CloseSignal),
 	}

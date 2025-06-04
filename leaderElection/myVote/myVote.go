@@ -5,23 +5,18 @@ type SetVoteSignal struct {
 	ResponseCh chan<- bool
 }
 type ResetSignal struct{}
-type ReadMyVoteSignal struct {
-	ResponseCh chan<- string
-}
 
 type MyVote struct {
-	myVote        string
-	SetVoteReq    chan SetVoteSignal
-	ResetReq      chan ResetSignal
-	ReadMyVoteReq chan ReadMyVoteSignal
+	myVote     string
+	SetVoteReq chan SetVoteSignal
+	ResetReq   chan ResetSignal
 }
 
 func NewMyVote() *MyVote {
 	myVote := &MyVote{
-		myVote:        "",
-		SetVoteReq:    make(chan SetVoteSignal),
-		ResetReq:      make(chan ResetSignal),
-		ReadMyVoteReq: make(chan ReadMyVoteSignal),
+		myVote:     "",
+		SetVoteReq: make(chan SetVoteSignal),
+		ResetReq:   make(chan ResetSignal),
 	}
 
 	go func() {
@@ -31,8 +26,6 @@ func NewMyVote() *MyVote {
 				myVote.setVote(signal)
 			case <-myVote.ResetReq:
 				myVote.myVote = ""
-			case signal := <-myVote.ReadMyVoteReq:
-				signal.ResponseCh <- myVote.myVote
 			}
 		}
 	}()

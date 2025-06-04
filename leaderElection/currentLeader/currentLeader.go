@@ -1,8 +1,8 @@
 package currentLeader
 
 type SetCurrentLeaderSignal struct {
-	LeaderID   string
-	ResponseCh chan<- bool
+	Leader     string
+	ResponseCh chan<- string
 }
 type ResetSignal struct{}
 
@@ -34,18 +34,10 @@ func NewCurrentLeader() *CurrentLeader {
 }
 
 func (currentLeader *CurrentLeader) setCurrentLeader(signal SetCurrentLeaderSignal) {
-	if currentLeader.leader != "" {
-		// we altready recognized a leader, check if it is the same as the requested one
-		if currentLeader.leader == signal.LeaderID {
-			// the leader is already set to the requested one
-			signal.ResponseCh <- true
-		} else {
-			// we already have a leader, but it is not the same as the requested one
-			signal.ResponseCh <- false
-		}
-	} else {
+	if currentLeader.leader == "" {
 		// we don't have a currentLeader yet, set it
-		currentLeader.leader = signal.LeaderID
-		signal.ResponseCh <- true
+		currentLeader.leader = signal.Leader
 	}
+	// provide the current leader as response
+	signal.ResponseCh <- currentLeader.leader
 }
