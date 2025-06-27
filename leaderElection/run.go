@@ -22,5 +22,7 @@ func (node *Node) run() {
 	}()
 
 	// start the election timer
-	node.electionTimer.StartReq <- electionTimeoutCh
+	node.electionTimer.StartReq <- electionTimer.StartSignal{
+		ResponseCh: electionTimeoutCh,
+	}
 }
