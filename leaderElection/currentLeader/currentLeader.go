@@ -37,15 +37,19 @@ func NewCurrentLeader() *CurrentLeader {
 }
 
 func (currentLeader *CurrentLeader) setCurrentLeader(signal SetCurrentLeaderSignal) {
-	if signal.Term > currentLeader.term {
+	switch {
+	case signal.Term > currentLeader.term:
+		// if the term is greater, we update the leader and term
+		currentLeader.term = signal.Term
+		currentLeader.leader = signal.Leader
+	case signal.Term == currentLeader.term:
+		// if the term is equal, we update the leader only if it is empty
 		if currentLeader.leader == "" {
-			// we don't have a currentLeader yet, set it
 			currentLeader.leader = signal.Leader
 		}
-		currentLeader.term = signal.Term
+	case signal.Term < currentLeader.term:
+		// stale request, ignore it
 	}
-	// else signal.Term <= currentLeader.term
-	// if the term is not greater, we do not change the current leader, stale request
 
 	// provide the current leader as response
 	signal.ResponseCh <- currentLeader.leader
