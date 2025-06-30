@@ -3,9 +3,11 @@ package currentLeader
 type SetCurrentLeaderSignal struct {
 	Leader     string
 	Term       int
-	ResponseCh chan<- string
+	ResponseCh chan<- string // channel to send back the current leader
 }
-type ResetSignal struct{}
+type ResetSignal struct {
+	Term int
+}
 
 type CurrentLeader struct {
 	leader              string
@@ -27,8 +29,8 @@ func NewCurrentLeader() *CurrentLeader {
 			select {
 			case signal := <-currentLeader.SetCurrentLeaderReq:
 				currentLeader.setCurrentLeader(signal)
-			case <-currentLeader.ResetReq:
-				currentLeader.leader = ""
+			case signal := <-currentLeader.ResetReq:
+				currentLeader.reset(signal)
 			}
 		}
 	}()
@@ -53,4 +55,13 @@ func (currentLeader *CurrentLeader) setCurrentLeader(signal SetCurrentLeaderSign
 
 	// provide the current leader as response
 	signal.ResponseCh <- currentLeader.leader
+}
+
+func (currentLeader *CurrentLeader) reset(signal ResetSignal) {
+	// reset only if it provide a higher term
+	if signal.Term > currentLeader.term {
+		currentLeader.term = signal.Term
+		currentLeader.leader = ""
+	}
+	// otherwise stale reset request, ignore it
 }
