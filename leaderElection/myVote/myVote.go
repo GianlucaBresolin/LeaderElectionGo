@@ -2,11 +2,15 @@ package myVote
 
 type SetVoteSignal struct {
 	Vote       string
+	Term       int
 	ResponseCh chan<- bool
 }
-type ResetSignal struct{}
+type ResetSignal struct {
+	Term int
+}
 
 type MyVote struct {
+	term       int
 	myVote     string
 	SetVoteReq chan SetVoteSignal
 	ResetReq   chan ResetSignal
@@ -15,6 +19,7 @@ type MyVote struct {
 func NewMyVote() *MyVote {
 	myVote := &MyVote{
 		myVote:     "",
+		term:       0,
 		SetVoteReq: make(chan SetVoteSignal),
 		ResetReq:   make(chan ResetSignal),
 	}
@@ -24,8 +29,8 @@ func NewMyVote() *MyVote {
 			select {
 			case signal := <-myVote.SetVoteReq:
 				myVote.setVote(signal)
-			case <-myVote.ResetReq:
-				myVote.myVote = ""
+			case signal := <-myVote.ResetReq:
+				myVote.reset(signal)
 			}
 		}
 	}()
@@ -34,12 +39,21 @@ func NewMyVote() *MyVote {
 }
 
 func (myVote *MyVote) setVote(signal SetVoteSignal) {
-	if myVote.myVote != "" {
-		// we altready voted
+	if signal.Term < myVote.term || (signal.Term == myVote.term && myVote.myVote != "") {
+		// the term is not valid or we already voted in this term
 		signal.ResponseCh <- false
 		return
 	}
 	// set the vote successfully
-	myVote.myVote = signal.Vote
+	myVote.term = signal.Term
 	signal.ResponseCh <- true
+}
+
+func (myVote *MyVote) reset(signal ResetSignal) {
+	// reset only if the provided term is greater than the current term
+	if myVote.term < signal.Term {
+		myVote.myVote = ""
+		myVote.term = signal.Term
+	}
+	// else do nothing, we are already in a higher term
 }
