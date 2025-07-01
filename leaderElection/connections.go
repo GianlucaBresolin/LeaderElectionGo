@@ -5,7 +5,8 @@ import (
 	"net"
 	"time"
 
-	pb "LeaderElectionGo/leaderElection/voteRequestService"
+	pb2 "LeaderElectionGo/leaderElection/services/heartbeatRequest/heartbeatRequestService"
+	pb1 "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -27,7 +28,9 @@ func (node *Node) prepareServer() {
 	grpcServer := grpc.NewServer()
 
 	// voteRequestServiceServer
-	pb.RegisterVoteRequestServiceServer(grpcServer, node)
+	pb1.RegisterVoteRequestServiceServer(grpcServer, node)
+	// heartbeatRequestServiceServer
+	pb2.RegisterHeartbeatServiceServer(grpcServer, node)
 
 	go func() {
 		if err := grpcServer.Serve(listener); err != nil {

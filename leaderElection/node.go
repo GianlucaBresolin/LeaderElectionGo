@@ -3,28 +3,32 @@ package leaderElection
 import (
 	"LeaderElectionGo/leaderElection/currentLeader"
 	"LeaderElectionGo/leaderElection/electionTimer"
+	"LeaderElectionGo/leaderElection/heartbeatTimer"
 	"LeaderElectionGo/leaderElection/myVote"
 	"LeaderElectionGo/leaderElection/state"
 	"LeaderElectionGo/leaderElection/term"
 	"LeaderElectionGo/leaderElection/voteCount"
 
-	pb "LeaderElectionGo/leaderElection/voteRequestService"
+	pb2 "LeaderElectionGo/leaderElection/services/heartbeatRequest/heartbeatRequestService"
+	pb1 "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
 )
 
 type Node struct {
-	ID            string
-	address       string
-	state         *state.State
-	currentTerm   *term.Term
-	electionTimer *electionTimer.ElectionTimer
-	voteCount     *voteCount.VoteCount
-	myVote        *myVote.MyVote
-	currentLeader *currentLeader.CurrentLeader
+	ID             string
+	address        string
+	state          *state.State
+	currentTerm    *term.Term
+	electionTimer  *electionTimer.ElectionTimer
+	heartbeatTimer *heartbeatTimer.HeartbeatTimer
+	voteCount      *voteCount.VoteCount
+	myVote         *myVote.MyVote
+	currentLeader  *currentLeader.CurrentLeader
 
 	configurationMap map[string]connectionData // map[nodeID]connectionData
 	CloseCh          chan CloseSignal
 
-	pb.UnimplementedVoteRequestServiceServer
+	pb1.UnimplementedVoteRequestServiceServer
+	pb2.UnimplementedHeartbeatServiceServer
 }
 
 func NewNode(id string, address string, addressMap map[string]string) *Node {
@@ -43,6 +47,7 @@ func NewNode(id string, address string, addressMap map[string]string) *Node {
 		state:            state.NewState(),
 		currentTerm:      term.NewTerm(),
 		electionTimer:    electionTimer.NewElectionTimer(150, 300),
+		heartbeatTimer:   heartbeatTimer.NewHeartbeatTimer(50),
 		voteCount:        voteCount.NewVoteCount(addressMap),
 		myVote:           myVote.NewMyVote(),
 		currentLeader:    currentLeader.NewCurrentLeader(),
