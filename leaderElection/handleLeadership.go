@@ -18,6 +18,9 @@ func (node *Node) handleLeadership(term int) {
 		// successfully set the state to leader
 		log.Printf("Node %s has become the leader for term %d", node.ID, term)
 
+		// provide heartbeats
+		node.sendHeartbeats(term)
+
 		// start the heartbeat timer
 		heartbeatTimeoutCh := make(chan heartbeatTimer.HeartbeatTimeoutSignal)
 		node.heartbeatTimer.StartReq <- heartbeatTimer.StartSignal{
@@ -29,8 +32,8 @@ func (node *Node) handleLeadership(term int) {
 				select {
 				case <-heartbeatTimeoutCh:
 					// handle heartbeat timeout: send heartbeats to all followers
-					node.sendHeartbeats(term)
 					node.heartbeatTimer.ResetReq <- heartbeatTimer.ResetSignal{}
+					node.sendHeartbeats(term)
 				}
 			}
 		}()
