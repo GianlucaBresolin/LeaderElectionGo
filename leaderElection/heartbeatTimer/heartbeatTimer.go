@@ -64,9 +64,11 @@ func (heartbeatTimer *HeartbeatTimer) start(responseCh chan HeartbeatTimeoutSign
 	heartbeatTimer.timer = time.NewTimer(heartbeatTimer.timeout)
 
 	go func() {
-		<-heartbeatTimer.timer.C
-		// timeout has occurred
-		responseCh <- HeartbeatTimeoutSignal{}
+		for {
+			<-heartbeatTimer.timer.C
+			// timeout has occurred
+			responseCh <- HeartbeatTimeoutSignal{}
+		}
 	}()
 }
 

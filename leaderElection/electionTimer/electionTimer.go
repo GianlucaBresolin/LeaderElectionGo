@@ -76,9 +76,11 @@ func (electionTimer *ElectionTimer) start(responseCh chan ElectionTimeoutSignal)
 	electionTimer.timer = time.NewTimer(time.Duration(timeout) * time.Millisecond)
 
 	go func() {
-		<-electionTimer.timer.C
-		// timout has occurred
-		responseCh <- ElectionTimeoutSignal{}
+		for {
+			<-electionTimer.timer.C
+			// timer has fired, send the timeoutsignal
+			responseCh <- ElectionTimeoutSignal{}
+		}
 	}()
 }
 
