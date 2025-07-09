@@ -7,17 +7,17 @@ import (
 type IncrementSignal struct {
 	ResponseCh chan int
 }
-type SetValueSignal struct {
+type SetTermSignal struct {
 	Value int
 }
 type GetTermSignal struct {
-	ResponseCh chan int
+	ResponseCh chan<- int
 }
 
 type Term struct {
 	currentTerm int
 	IncReq      chan IncrementSignal
-	SetValueReq chan SetValueSignal
+	SetTermReq  chan SetTermSignal
 	GetTermReq  chan GetTermSignal
 }
 
@@ -25,7 +25,7 @@ func NewTerm() *Term {
 	term := &Term{
 		currentTerm: 0,
 		IncReq:      make(chan IncrementSignal),
-		SetValueReq: make(chan SetValueSignal),
+		SetTermReq:  make(chan SetTermSignal),
 		GetTermReq:  make(chan GetTermSignal),
 	}
 
@@ -34,8 +34,8 @@ func NewTerm() *Term {
 			select {
 			case signal := <-term.IncReq:
 				term.inc(signal)
-			case signal := <-term.SetValueReq:
-				term.setValue(signal)
+			case signal := <-term.SetTermReq:
+				term.setTerm(signal)
 			case signal := <-term.GetTermReq:
 				signal.ResponseCh <- term.currentTerm
 			}
@@ -54,7 +54,7 @@ func (t *Term) inc(signal IncrementSignal) {
 	}
 }
 
-func (t *Term) setValue(signal SetValueSignal) {
+func (t *Term) setTerm(signal SetTermSignal) {
 	if signal.Value > t.currentTerm {
 		t.currentTerm = signal.Value
 	} else {
