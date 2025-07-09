@@ -46,6 +46,7 @@ func (myVote *MyVote) setVote(signal SetVoteSignal) {
 	}
 	// set the vote successfully
 	myVote.term = signal.Term
+	myVote.myVote = signal.Vote
 	signal.ResponseCh <- true
 }
 
