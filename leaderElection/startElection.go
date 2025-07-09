@@ -27,6 +27,16 @@ func (node *Node) startElection() {
 	}
 
 	// vote for myself
+	responseCh := make(chan bool)
+	node.myVote.SetVoteReq <- myVote.SetVoteSignal{
+		Vote:       node.ID,
+		Term:       term,
+		ResponseCh: responseCh,
+	}
+	if success := <-responseCh; !success {
+		node.state.FollowerCh <- state.FollowerSignal{}
+	}
+
 	becomeLeaderCh := make(chan bool)
 	node.voteCount.AddVoteReq <- voteCount.AddVoteSignal{
 		Term:           term,
@@ -34,17 +44,12 @@ func (node *Node) startElection() {
 		BecomeLeaderCh: becomeLeaderCh,
 	}
 
-	// checks if we can become the leader
+	// checks if we can become the leader (cluster of size <= 2)
 	if becomeLeaderFlag := <-becomeLeaderCh; becomeLeaderFlag {
 		// we can become the leader
-		node.state.LeaderCh <- state.LeaderSignal{}
-		log.Printf("Node %s has become the leader for term %d", node.ID, term)
+		node.handleLeadership(term)
 	}
 	// else we did not get enough votes to become leader
-
-	node.myVote.SetVoteReq <- myVote.SetVoteSignal{
-		Vote: node.ID,
-	}
 
 	// send vote request to all other nodes
 	for nodeID, connData := range node.configurationMap {
