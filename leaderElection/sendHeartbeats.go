@@ -11,9 +11,6 @@ import (
 )
 
 func (node *Node) sendHeartbeats(term int) {
-	// reset the heartbeat timer after sending heartbeats
-	node.heartbeatTimer.ResetReq <- struct{}{}
-
 	// send heartbeats to all followers
 	for nodeID, connData := range node.configurationMap {
 		if nodeID == node.ID {
@@ -50,7 +47,10 @@ func (node *Node) sendHeartbeat(term int, conn *grpc.ClientConn) {
 		successFlag = true
 		if !resp.Success {
 			// heartbeat was not successful, revert to follower state
-			node.state.FollowerCh <- state.FollowerSignal{}
+			node.state.FollowerCh <- state.FollowerSignal{
+				HeartbeatTimerRef: node.heartbeatTimer,
+				ElectionTimerRef:  node.electionTimer,
+			}
 		}
 		// else nothing to do, heartbeat was received successfully
 	}
