@@ -7,9 +7,8 @@ import (
 
 	"google.golang.org/grpc"
 
-	"LeaderElectionGo/leaderElection/state"
+	pb "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
 	"LeaderElectionGo/leaderElection/voteCount"
-	pb "LeaderElectionGo/leaderElection/voteRequestService"
 )
 
 const RETRY_DELAY = 20
@@ -28,7 +27,7 @@ func (node *Node) askVote(nodeID string, term int, conn *grpc.ClientConn) {
 		if err != nil {
 			log.Printf("Error sending vote request to node %s: %v. Retrying...", nodeID, err)
 			time.Sleep(RETRY_DELAY * time.Millisecond) // avoid busy looping
-			continue
+			continue                                   // retry sending vote request
 		}
 		// the node responded
 		successFlag = true
@@ -43,8 +42,7 @@ func (node *Node) askVote(nodeID string, term int, conn *grpc.ClientConn) {
 
 			if becomeLeaderFlag := <-becomeLeaderCh; becomeLeaderFlag {
 				// become the leader
-				node.state.LeaderCh <- state.LeaderSignal{}
-				log.Printf("Node %s has become the leader for term %d", node.ID, term)
+				node.handleLeadership(term)
 				return
 			}
 			// else we did not get enough votes to become leader
