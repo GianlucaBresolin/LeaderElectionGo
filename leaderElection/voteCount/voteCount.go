@@ -50,7 +50,6 @@ func NewVoteCount(configurationMap map[string]string) *VoteCount {
 }
 
 func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
-	log.Println("Received vote count add request:", signal)
 	if signal.Term != voteCount.term {
 		log.Println("Vote count add request ignored: term is not equal to current term")
 	} else {
