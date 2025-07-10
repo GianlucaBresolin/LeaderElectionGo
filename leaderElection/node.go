@@ -47,7 +47,7 @@ func NewNode(id string, address string, addressMap map[string]string) *Node {
 		state:            state.NewState(),
 		currentTerm:      term.NewTerm(),
 		electionTimer:    electionTimer.NewElectionTimer(150, 300),
-		heartbeatTimer:   heartbeatTimer.NewHeartbeatTimer(50),
+		heartbeatTimer:   heartbeatTimer.NewHeartbeatTimer(10),
 		voteCount:        voteCount.NewVoteCount(addressMap),
 		myVote:           myVote.NewMyVote(),
 		currentLeader:    currentLeader.NewCurrentLeader(),

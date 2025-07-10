@@ -2,10 +2,12 @@ package leaderElection
 
 import (
 	"context"
+	"log"
 
 	"LeaderElectionGo/leaderElection/myVote"
+	pb "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
+	"LeaderElectionGo/leaderElection/state"
 	"LeaderElectionGo/leaderElection/term"
-	pb "LeaderElectionGo/leaderElection/voteRequestService"
 )
 
 func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb.VoteResponse, error) {
@@ -29,10 +31,24 @@ func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb
 		return voteResponse, nil
 	}
 
+	// if the term is greater, update the current term and revert to follower state
+	if int(req.Term) > currentTerm {
+		node.currentTerm.SetTermReq <- term.SetTermSignal{
+			Value: int(req.Term),
+		}
+
+		// revert to follower state
+		node.state.FollowerCh <- state.FollowerSignal{
+			HeartbeatTimerRef: node.heartbeatTimer,
+			ElectionTimerRef:  node.electionTimer,
+		}
+	}
+
 	//the term is valid, try to set the our vote
 	responseCh := make(chan bool)
 	node.myVote.SetVoteReq <- myVote.SetVoteSignal{
 		Vote:       req.CandidateId,
+		Term:       int(req.Term),
 		ResponseCh: responseCh,
 	}
 	if success := <-responseCh; success {
@@ -40,5 +56,6 @@ func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb
 		voteResponse.Granted = true
 	}
 	// else we do nothing (vote not granted)
+	log.Println("NODE", node.ID, "VOTE REQUEST FROM NODE", req.CandidateId, "FOR TERM", req.Term, "GRANTED:", voteResponse.Granted)
 	return voteResponse, nil
 }
