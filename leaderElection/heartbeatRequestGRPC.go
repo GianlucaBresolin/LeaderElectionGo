@@ -48,24 +48,24 @@ func (node *Node) HeartbeatRequestGRPC(ctx context.Context, req *pb.HeartbeatReq
 		// proceed to set the leader
 	}
 
-		// try to set the currentLeader
-		setCurrentLeaderResponseCh := make(chan string)
-		node.currentLeader.SetCurrentLeaderReq <- currentLeader.SetCurrentLeaderSignal{
-			Leader:     req.Leader,
-			ResponseCh: setCurrentLeaderResponseCh,
-		}
-		currentLeader := <-setCurrentLeaderResponseCh
+	// try to set the currentLeader
+	setCurrentLeaderResponseCh := make(chan string)
+	node.currentLeader.SetCurrentLeaderReq <- currentLeader.SetCurrentLeaderSignal{
+		Leader:     req.Leader,
+		ResponseCh: setCurrentLeaderResponseCh,
+	}
+	currentLeader := <-setCurrentLeaderResponseCh
 
-		if currentLeader == req.Leader {
+	if currentLeader == req.Leader {
 		// the current leader is set successfully or was already set to this leader
-			// grant the heartbeat's success
-			heartbeatResponse.Success = true
+		// grant the heartbeat's success
+		heartbeatResponse.Success = true
 
-			// reset the election timer
-			node.electionTimer.ResetReq <- electionTimer.ResetSignal{}
+		// reset the election timer
+		node.electionTimer.ResetReq <- electionTimer.ResetSignal{}
 
 		log.Println("Node", node.ID, ": Heartbeat received from leader:", req.Leader, "for term:", req.Term)
-		}
-		// else not the current leader, do not grant success (default)
+	}
+	// else not the current leader, do not grant success (default)
 	return heartbeatResponse, nil
 }
