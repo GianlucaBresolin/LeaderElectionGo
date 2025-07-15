@@ -6,6 +6,7 @@ import (
 	"LeaderElectionGo/leaderElection/heartbeatTimer"
 	"LeaderElectionGo/leaderElection/myVote"
 	"LeaderElectionGo/leaderElection/state"
+	"LeaderElectionGo/leaderElection/stopLeadershipSignal"
 	"LeaderElectionGo/leaderElection/term"
 	"LeaderElectionGo/leaderElection/voteCount"
 
@@ -24,7 +25,8 @@ type Node struct {
 	myVote         *myVote.MyVote
 	currentLeader  *currentLeader.CurrentLeader
 
-	configurationMap map[string]connectionData // map[nodeID]connectionData
+	configurationMap map[string]connectionData                      // map[nodeID]connectionData
+	stopLeadershipCh chan stopLeadershipSignal.StopLeadershipSignal // channel to stop leadership
 	CloseCh          chan CloseSignal
 
 	pb1.UnimplementedVoteRequestServiceServer
@@ -52,6 +54,7 @@ func NewNode(id string, address string, addressMap map[string]string) *Node {
 		myVote:           myVote.NewMyVote(),
 		currentLeader:    currentLeader.NewCurrentLeader(),
 		configurationMap: configurationMap,
+		stopLeadershipCh: nil, // will be set when the node becomes a leader
 		CloseCh:          make(chan CloseSignal),
 	}
 
@@ -61,4 +64,30 @@ func NewNode(id string, address string, addressMap map[string]string) *Node {
 	go node.run()
 
 	return node
+}
+
+func (node *Node) run() {
+	electionTimeoutCh := make(chan electionTimer.ElectionTimeoutSignal)
+	becomeLeaderCh := make(chan becomeLeaderSignal)
+
+	go func() {
+		for {
+			select {
+			case <-electionTimeoutCh:
+				// handle election timout: start a new election
+				go node.handleElection(becomeLeaderCh)
+			case signal := <-becomeLeaderCh:
+				go node.handleLeadership(signal.term)
+			case <-node.CloseCh:
+				// handle close signal:
+				// close connections to other nodes
+				node.closeConnections()
+			}
+		}
+	}()
+
+	// start the election timer
+	node.electionTimer.StartReq <- electionTimer.StartSignal{
+		ResponseCh: electionTimeoutCh,
+	}
 }

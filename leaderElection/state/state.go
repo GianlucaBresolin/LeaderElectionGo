@@ -3,11 +3,14 @@ package state
 import (
 	"LeaderElectionGo/leaderElection/electionTimer"
 	"LeaderElectionGo/leaderElection/heartbeatTimer"
+	"LeaderElectionGo/leaderElection/stopLeadershipSignal"
+	"log"
 )
 
 type FollowerSignal struct {
 	HeartbeatTimerRef *heartbeatTimer.HeartbeatTimer
 	ElectionTimerRef  *electionTimer.ElectionTimer
+	StopLeadershipCh  chan stopLeadershipSignal.StopLeadershipSignal
 }
 type CandidateSignal struct{}
 type LeaderSignal struct {
@@ -49,10 +52,15 @@ func NewState() *State {
 
 func (s *State) setFollower(signal FollowerSignal) {
 	if s.value == "leader" {
+		if signal.StopLeadershipCh == nil || signal.HeartbeatTimerRef == nil || signal.ElectionTimerRef == nil {
+			log.Fatal("Error: StopLeadershipCh, HeartbeatTimerRef, or ElectionTimerRef is nil, cannot revert to folloer. (Incongruent state)")
+		}
 		// if the current state is leader, stop the heartbeat timer
 		signal.HeartbeatTimerRef.StopReq <- heartbeatTimer.StopSignal{}
 		// restart the election timer
 		signal.ElectionTimerRef.ResetReq <- electionTimer.ResetSignal{}
+		// stop the leadership
+		signal.StopLeadershipCh <- stopLeadershipSignal.StopLeadershipSignal{}
 	}
 	s.value = "follower"
 }

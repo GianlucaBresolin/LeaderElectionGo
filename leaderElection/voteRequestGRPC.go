@@ -41,6 +41,7 @@ func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb
 		node.state.FollowerCh <- state.FollowerSignal{
 			HeartbeatTimerRef: node.heartbeatTimer,
 			ElectionTimerRef:  node.electionTimer,
+			StopLeadershipCh:  node.stopLeadershipCh,
 		}
 	}
 
