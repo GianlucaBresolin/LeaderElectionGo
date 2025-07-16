@@ -10,7 +10,7 @@ import (
 type FollowerSignal struct {
 	HeartbeatTimerRef *heartbeatTimer.HeartbeatTimer
 	ElectionTimerRef  *electionTimer.ElectionTimer
-	StopLeadershipCh  chan stopLeadershipSignal.StopLeadershipSignal
+	StopLeadershipCh  chan<- stopLeadershipSignal.StopLeadershipSignal
 	Term              int
 }
 type CandidateSignal struct {
