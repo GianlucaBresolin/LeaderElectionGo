@@ -5,7 +5,7 @@ import "log"
 type AddVoteSignal struct {
 	Term           int
 	VoterID        string
-	BecomeLeaderCh chan bool
+	BecomeLeaderCh chan<- bool
 }
 type ResetSignal struct {
 	Term int
@@ -50,25 +50,32 @@ func NewVoteCount(configurationMap map[string]string) *VoteCount {
 }
 
 func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
-	if signal.Term != voteCount.term {
-		log.Println("Vote count add request ignored: term is not equal to current term")
-	} else {
-		if votedFlag := voteCount.voterMap[signal.VoterID]; votedFlag {
-			// idempotency behavior: if the voter has already voted, do nothing
-			return
-		}
-		voteCount.voteCount++
-		voteCount.voterMap[signal.VoterID] = true
-
-		if voteCount.voteCount > len(voteCount.voterMap)/2 && !voteCount.leaderFlag {
-			log.Printf("Reached majority of votes in the cluster.")
-			voteCount.leaderFlag = true
-			signal.BecomeLeaderCh <- true
-			return
-		}
-		// not enough votes to become leader yet or already a leader
-		signal.BecomeLeaderCh <- false
+	switch {
+	case signal.Term < voteCount.term:
+		// stale request, do nothing
+		return
+	case signal.Term > voteCount.term:
+		// new term, proceed to reset the vote count
+		voteCount.reset(ResetSignal{Term: signal.Term})
+	default:
+		// signal.Term == voteCount.term: proceed to add the vote
 	}
+	// now the signal.Term is guaranteed to be == voteCount.term
+	if votedFlag := voteCount.voterMap[signal.VoterID]; votedFlag {
+		// idempotency behavior: if the voter has already voted, do nothing
+		return
+	}
+	voteCount.voteCount++
+	voteCount.voterMap[signal.VoterID] = true
+
+	if voteCount.voteCount > len(voteCount.voterMap)/2 && !voteCount.leaderFlag {
+		log.Printf("Reached majority of votes in the cluster.")
+		voteCount.leaderFlag = true
+		signal.BecomeLeaderCh <- true
+		return
+	}
+	// not enough votes to become leader yet or already a leader
+	signal.BecomeLeaderCh <- false
 }
 
 func (voteCount *VoteCount) reset(signal ResetSignal) {
@@ -79,7 +86,6 @@ func (voteCount *VoteCount) reset(signal ResetSignal) {
 			voteCount.voterMap[voterID] = false
 		}
 		voteCount.leaderFlag = false
-	} else {
-		log.Println("Vote count reset request ignored: term is not greater than current term")
 	}
+	// else the reset for that term already happened, do nothing
 }
