@@ -22,9 +22,6 @@ type becomeLeaderSignal struct {
 
 func (node *Node) handleElection(becomeLeaderCh chan becomeLeaderSignal) {
 	log.Println("NODE", node.ID, "START ELECTION")
-	// become a candidate
-	node.state.CandidateCh <- state.CandidateSignal{}
-
 	// reset the election timer to resolve split-vote
 	node.electionTimer.ResetReq <- electionTimer.ResetSignal{}
 
@@ -35,6 +32,11 @@ func (node *Node) handleElection(becomeLeaderCh chan becomeLeaderSignal) {
 	}
 	// get the incremented term
 	term := <-termCh
+
+	// become a candidate
+	node.state.CandidateCh <- state.CandidateSignal{
+		Term: term,
+	}
 
 	// reset the vote count
 	node.voteCount.ResetReq <- voteCount.ResetSignal{
@@ -53,6 +55,7 @@ func (node *Node) handleElection(becomeLeaderCh chan becomeLeaderSignal) {
 			HeartbeatTimerRef: node.heartbeatTimer,
 			ElectionTimerRef:  node.electionTimer,
 			StopLeadershipCh:  node.stopLeadershipCh,
+			Term:              term,
 		}
 	}
 

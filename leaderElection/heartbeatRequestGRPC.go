@@ -41,6 +41,7 @@ func (node *Node) HeartbeatRequestGRPC(ctx context.Context, req *pb.HeartbeatReq
 			HeartbeatTimerRef: node.heartbeatTimer,
 			ElectionTimerRef:  node.electionTimer,
 			StopLeadershipCh:  node.stopLeadershipCh,
+			Term:              int(req.Term),
 		}
 		// reset my vote
 		node.myVote.ResetReq <- myVote.ResetSignal{

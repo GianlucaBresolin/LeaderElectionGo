@@ -11,8 +11,11 @@ type FollowerSignal struct {
 	HeartbeatTimerRef *heartbeatTimer.HeartbeatTimer
 	ElectionTimerRef  *electionTimer.ElectionTimer
 	StopLeadershipCh  chan stopLeadershipSignal.StopLeadershipSignal
+	Term              int
 }
-type CandidateSignal struct{}
+type CandidateSignal struct {
+	Term int
+}
 type LeaderSignal struct {
 	Term       int
 	ResponseCh chan<- bool
@@ -39,8 +42,8 @@ func NewState() *State {
 			select {
 			case signal := <-state.FollowerCh:
 				state.setFollower(signal)
-			case <-state.CandidateCh:
-				state.value = "candidate"
+			case signal := <-state.CandidateCh:
+				state.setCandidate(signal)
 			case signal := <-state.LeaderCh:
 				state.setLeader(signal)
 			}
@@ -51,18 +54,37 @@ func NewState() *State {
 }
 
 func (s *State) setFollower(signal FollowerSignal) {
-	if s.value == "leader" {
-		if signal.StopLeadershipCh == nil || signal.HeartbeatTimerRef == nil || signal.ElectionTimerRef == nil {
-			log.Fatal("Error: StopLeadershipCh, HeartbeatTimerRef, or ElectionTimerRef is nil, cannot revert to folloer. (Incongruent state)")
+	if signal.Term >= s.term {
+		if s.value == "leader" {
+			if signal.StopLeadershipCh == nil || signal.HeartbeatTimerRef == nil || signal.ElectionTimerRef == nil {
+				log.Fatal("Error: StopLeadershipCh, HeartbeatTimerRef, or ElectionTimerRef is nil, cannot revert to folloer. (Incongruent state)")
+			}
+			// if the current state is leader, stop the heartbeat timer and
+			signal.HeartbeatTimerRef.StopReq <- heartbeatTimer.StopSignal{}
+			// restart the election timer and
+			signal.ElectionTimerRef.ResetReq <- electionTimer.ResetSignal{}
+			// stop the leadership
+			signal.StopLeadershipCh <- stopLeadershipSignal.StopLeadershipSignal{}
 		}
-		// if the current state is leader, stop the heartbeat timer
-		signal.HeartbeatTimerRef.StopReq <- heartbeatTimer.StopSignal{}
-		// restart the election timer
-		signal.ElectionTimerRef.ResetReq <- electionTimer.ResetSignal{}
-		// stop the leadership
-		signal.StopLeadershipCh <- stopLeadershipSignal.StopLeadershipSignal{}
+		s.value = "follower"
+		s.term = signal.Term
 	}
-	s.value = "follower"
+	// else stale request, ignore it
+}
+
+func (s *State) setCandidate(signal CandidateSignal) {
+	switch {
+	case s.term < signal.Term:
+		s.term = signal.Term
+		s.value = "candidate"
+	case s.term == signal.Term:
+		if s.value == "follower" {
+			s.value = "candidate"
+		}
+		// else do nothing, already a candidate or a leader for this term
+	default:
+		// stale request, do nothing
+	}
 }
 
 func (s *State) setLeader(signal LeaderSignal) {

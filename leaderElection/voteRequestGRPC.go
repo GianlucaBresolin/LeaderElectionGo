@@ -42,6 +42,7 @@ func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb
 			HeartbeatTimerRef: node.heartbeatTimer,
 			ElectionTimerRef:  node.electionTimer,
 			StopLeadershipCh:  node.stopLeadershipCh,
+			Term:              int(req.Term),
 		}
 	}
 

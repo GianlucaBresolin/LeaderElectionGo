@@ -108,6 +108,7 @@ func (node *Node) sendHeartbeat(term int, conn *grpc.ClientConn) {
 				HeartbeatTimerRef: node.heartbeatTimer,
 				ElectionTimerRef:  node.electionTimer,
 				StopLeadershipCh:  node.stopLeadershipCh,
+				Term:              term,
 			}
 		}
 		// else nothing to do, heartbeat was received successfully
