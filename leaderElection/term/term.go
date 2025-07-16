@@ -5,7 +5,7 @@ import (
 )
 
 type IncrementSignal struct {
-	ResponseCh chan int
+	ResponseCh chan<- int
 }
 type SetTermSignal struct {
 	Value int
