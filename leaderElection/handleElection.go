@@ -6,6 +6,7 @@ import (
 	pb "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
 	"LeaderElectionGo/leaderElection/state"
 	"LeaderElectionGo/leaderElection/term"
+	"LeaderElectionGo/leaderElection/utils"
 	"LeaderElectionGo/leaderElection/voteCount"
 	"context"
 	"log"
@@ -22,7 +23,7 @@ type becomeLeaderSignal struct {
 
 func (node *Node) handleElection(becomeLeaderCh chan becomeLeaderSignal) {
 	log.Println("NODE", node.ID, "START ELECTION")
-	// reset the election timer to resolve split-vote
+	// reset the election timer to resolve split-votes
 	node.electionTimer.ResetReq <- electionTimer.ResetSignal{}
 
 	// increment the current term
@@ -57,6 +58,7 @@ func (node *Node) handleElection(becomeLeaderCh chan becomeLeaderSignal) {
 			StopLeadershipCh:  node.stopLeadershipCh,
 			Term:              term,
 		}
+		return
 	}
 
 	becomeLeaderFlagCh := make(chan bool)
@@ -92,12 +94,12 @@ func (node *Node) handleElection(becomeLeaderCh chan becomeLeaderSignal) {
 	}
 }
 
-func (node *Node) askVote(nodeID string, term int, becomeLeaderCh chan becomeLeaderSignal, conn *grpc.ClientConn) {
+func (node *Node) askVote(nodeID utils.NodeID, term int, becomeLeaderCh chan becomeLeaderSignal, conn *grpc.ClientConn) {
 	client := pb.NewVoteRequestServiceClient(conn)
 
 	req := &pb.VoteRequest{
 		Term:        int32(term),
-		CandidateId: node.ID,
+		CandidateId: string(node.ID),
 	}
 
 	successFlag := false

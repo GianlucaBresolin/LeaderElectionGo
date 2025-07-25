@@ -7,20 +7,21 @@ import (
 
 	pb2 "LeaderElectionGo/leaderElection/services/heartbeatRequest/heartbeatRequestService"
 	pb1 "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
+	"LeaderElectionGo/leaderElection/utils"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type connectionData struct {
-	address    string
+	address    utils.Address
 	connection *grpc.ClientConn
 }
 
 type CloseSignal struct{}
 
 func (node *Node) prepareServer() {
-	listener, err := net.Listen("tcp", node.address)
+	listener, err := net.Listen("tcp", string(node.address))
 	if err != nil {
 		log.Fatalf("Error starting listener: %v.", err)
 	}
@@ -48,7 +49,7 @@ func (node *Node) prepareConnections() {
 
 		successFlag := false
 		for !successFlag {
-			conn, err := grpc.NewClient(connData.address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			conn, err := grpc.NewClient(string(connData.address), grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				log.Fatalf("Failed to connect to node %s: %v. Retrying...", nodeID, err)
 				// avoid busy looping

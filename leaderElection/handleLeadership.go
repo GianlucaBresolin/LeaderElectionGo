@@ -8,7 +8,6 @@ import (
 	"LeaderElectionGo/leaderElection/stopLeadershipSignal"
 	"context"
 	"log"
-	"time"
 
 	"google.golang.org/grpc"
 )
@@ -44,16 +43,16 @@ func (node *Node) handleLeadership(term int) {
 			ResponseCh: heartbeatTimeoutCh,
 		}
 
-		i := 0
+		// i := 0
 		for {
 			select {
 			case <-heartbeatTimeoutCh:
-				i++
-				if i == 10 {
-					// sleep for a while to allow other leaders
-					time.Sleep(200 * time.Millisecond)
-					i = 0 // reset the counter
-				}
+				// i++
+				// if i == 10 {
+				// 	// sleep for a while to allow other leaders
+				// 	time.Sleep(200 * time.Millisecond)
+				// 	i = 0 // reset the counter
+				// }
 				// handle heartbeat timeout: send heartbeats to all followers
 				node.heartbeatTimer.ResetReq <- heartbeatTimer.ResetSignal{}
 				node.sendHeartbeats(term)
@@ -90,7 +89,7 @@ func (node *Node) sendHeartbeat(term int, conn *grpc.ClientConn) {
 
 	req := &pb.HeartbeatRequest{
 		Term:   int32(term),
-		Leader: node.ID,
+		Leader: string(node.ID),
 	}
 
 	successFlag := false

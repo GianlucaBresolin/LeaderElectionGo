@@ -2,17 +2,23 @@ package main
 
 import (
 	"LeaderElectionGo/leaderElection"
+	"log"
+	"os"
 )
 
 func main() {
-	addressMap := make(map[string]string)
-	addressMap["1"] = "localhost:50051"
-	addressMap["2"] = "localhost:50052"
-	addressMap["3"] = "localhost:50053"
+	log.Println("Starting Node...")
 
-	leaderElection.NewNode("1", "localhost:50051", addressMap)
-	leaderElection.NewNode("2", "localhost:50052", addressMap)
-	leaderElection.NewNode("3", "localhost:50053", addressMap)
+	// build the configuration map from command line arguments
+	peers := make(map[leaderElection.NodeID]leaderElection.Address)
+	if len(os.Args) > 2 {
+		for i := 3; i < len(os.Args); i += 2 {
+			peers[leaderElection.NodeID(os.Args[i])] = leaderElection.Address(os.Args[i+1])
+		}
+	}
+
+	// build the node
+	leaderElection.NewNode(leaderElection.NodeID(os.Args[1]), leaderElection.Address(os.Args[2]), peers)
 
 	for {
 	}

@@ -8,15 +8,19 @@ import (
 	"LeaderElectionGo/leaderElection/state"
 	"LeaderElectionGo/leaderElection/stopLeadershipSignal"
 	"LeaderElectionGo/leaderElection/term"
+	"LeaderElectionGo/leaderElection/utils"
 	"LeaderElectionGo/leaderElection/voteCount"
 
 	pb2 "LeaderElectionGo/leaderElection/services/heartbeatRequest/heartbeatRequestService"
 	pb1 "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
 )
 
+type NodeID string
+type Address string
+
 type Node struct {
-	ID             string
-	address        string
+	ID             utils.NodeID
+	address        utils.Address
 	state          *state.State
 	currentTerm    *term.Term
 	electionTimer  *electionTimer.ElectionTimer
@@ -25,7 +29,7 @@ type Node struct {
 	myVote         *myVote.MyVote
 	currentLeader  *currentLeader.CurrentLeader
 
-	configurationMap map[string]connectionData                      // map[nodeID]connectionData
+	configurationMap map[utils.NodeID]connectionData                // map[nodeID]connectionData
 	stopLeadershipCh chan stopLeadershipSignal.StopLeadershipSignal // channel to stop leadership
 	CloseCh          chan CloseSignal
 
@@ -33,24 +37,31 @@ type Node struct {
 	pb2.UnimplementedHeartbeatServiceServer
 }
 
-func NewNode(id string, address string, addressMap map[string]string) *Node {
+func NewNode(id NodeID, address Address, addressMap map[NodeID]Address) *Node {
 	// build the configurationMap from the addressMap
-	configurationMap := make(map[string]connectionData)
+	configurationMap := make(map[utils.NodeID]connectionData)
 	for nodeID, address := range addressMap {
-		configurationMap[nodeID] = connectionData{
-			address:    address,
+		configurationMap[utils.NodeID(nodeID)] = connectionData{
+			address:    utils.Address(address),
 			connection: nil,
 		}
 	}
 
 	node := &Node{
-		ID:               id,
-		address:          address,
-		state:            state.NewState(),
-		currentTerm:      term.NewTerm(),
-		electionTimer:    electionTimer.NewElectionTimer(150, 300),
-		heartbeatTimer:   heartbeatTimer.NewHeartbeatTimer(10),
-		voteCount:        voteCount.NewVoteCount(addressMap),
+		ID:             utils.NodeID(id),
+		address:        utils.Address(address),
+		state:          state.NewState(),
+		currentTerm:    term.NewTerm(),
+		electionTimer:  electionTimer.NewElectionTimer(150, 300),
+		heartbeatTimer: heartbeatTimer.NewHeartbeatTimer(10),
+		voteCount: voteCount.NewVoteCount(
+			func(addressMap map[NodeID]Address) []utils.NodeID {
+				nodeList := make([]utils.NodeID, 0, len(configurationMap))
+				for nodeID := range configurationMap {
+					nodeList = append(nodeList, nodeID)
+				}
+				return nodeList
+			}(addressMap)),
 		myVote:           myVote.NewMyVote(),
 		currentLeader:    currentLeader.NewCurrentLeader(),
 		configurationMap: configurationMap,

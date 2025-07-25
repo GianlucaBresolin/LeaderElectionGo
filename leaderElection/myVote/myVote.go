@@ -1,7 +1,9 @@
 package myVote
 
+import "LeaderElectionGo/leaderElection/utils"
+
 type SetVoteSignal struct {
-	Vote       string
+	Vote       utils.NodeID
 	Term       int
 	ResponseCh chan<- bool
 }
@@ -11,7 +13,7 @@ type ResetSignal struct {
 
 type MyVote struct {
 	term       int
-	myVote     string
+	myVote     utils.NodeID
 	SetVoteReq chan SetVoteSignal
 	ResetReq   chan ResetSignal
 }

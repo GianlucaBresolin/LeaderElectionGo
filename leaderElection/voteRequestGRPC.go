@@ -8,6 +8,7 @@ import (
 	pb "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
 	"LeaderElectionGo/leaderElection/state"
 	"LeaderElectionGo/leaderElection/term"
+	"LeaderElectionGo/leaderElection/utils"
 )
 
 func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb.VoteResponse, error) {
@@ -49,7 +50,7 @@ func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb
 	//the term is valid, try to set the our vote
 	responseCh := make(chan bool)
 	node.myVote.SetVoteReq <- myVote.SetVoteSignal{
-		Vote:       req.CandidateId,
+		Vote:       utils.NodeID(req.CandidateId),
 		Term:       int(req.Term),
 		ResponseCh: responseCh,
 	}

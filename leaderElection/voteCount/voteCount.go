@@ -1,10 +1,13 @@
 package voteCount
 
-import "log"
+import (
+	"LeaderElectionGo/leaderElection/utils"
+	"log"
+)
 
 type AddVoteSignal struct {
 	Term           int
-	VoterID        string
+	VoterID        utils.NodeID
 	BecomeLeaderCh chan<- bool
 }
 type ResetSignal struct {
@@ -14,24 +17,24 @@ type ResetSignal struct {
 type VoteCount struct {
 	voteCount  int
 	term       int
-	voterMap   map[string]bool
+	voterMap   map[utils.NodeID]bool
 	leaderFlag bool
 	AddVoteReq chan AddVoteSignal
 	ResetReq   chan ResetSignal
 }
 
-func NewVoteCount(configurationMap map[string]string) *VoteCount {
+func NewVoteCount(configurationList []utils.NodeID) *VoteCount {
 	voteCount := &VoteCount{
 		voteCount:  0,
 		term:       0,
-		voterMap:   make(map[string]bool),
+		voterMap:   make(map[utils.NodeID]bool),
 		leaderFlag: false,
 		AddVoteReq: make(chan AddVoteSignal),
 		ResetReq:   make(chan ResetSignal),
 	}
 
 	// build the voterMap from teh configurationMap
-	for voterID := range configurationMap {
+	for _, voterID := range configurationList {
 		voteCount.voterMap[voterID] = false
 	}
 

@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  server1:
+    image: leaderelectiongo
+    container_name: node1
+    command: ["node1", "node1:5001",  
+              "node2", "node2:5002",
+              "node3", "node3:5003"]
+    
+  server2:
+    image: leaderelectiongo
+    container_name: node2
+    command: ["node2", "node2:5002",  
+              "node1", "node1:5001",
+              "node3", "node3:5003"]
+
+  server3:
+    image: leaderelectiongo
+    container_name: node3
+    command: ["node3", "node3:5003",
+              "node1", "node1:5001",
+              "node2", "node2:5002"]
