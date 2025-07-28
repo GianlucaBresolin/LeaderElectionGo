@@ -2,6 +2,7 @@ package leaderElection
 
 import (
 	"LeaderElectionGo/leaderElection/electionTimer"
+	"LeaderElectionGo/leaderElection/internalUtils"
 	"LeaderElectionGo/leaderElection/myVote"
 	pb "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
 	"LeaderElectionGo/leaderElection/state"
@@ -17,11 +18,7 @@ import (
 
 const RETRY_DELAY = 20 // milliseconds
 
-type becomeLeaderSignal struct {
-	term int
-}
-
-func (node *Node) handleElection(becomeLeaderCh chan becomeLeaderSignal) {
+func (node *Node) handleElection(becomeLeaderCh chan internalUtils.BecomeLeaderSignal) {
 	log.Println("NODE", node.ID, "START ELECTION")
 	// reset the election timer to resolve split-votes
 	node.electionTimer.ResetReq <- electionTimer.ResetSignal{}
@@ -61,21 +58,12 @@ func (node *Node) handleElection(becomeLeaderCh chan becomeLeaderSignal) {
 		return
 	}
 
-	becomeLeaderFlagCh := make(chan bool)
+	// count our vote
 	node.voteCount.AddVoteReq <- voteCount.AddVoteSignal{
 		Term:           term,
 		VoterID:        node.ID,
-		BecomeLeaderCh: becomeLeaderFlagCh,
+		BecomeLeaderCh: becomeLeaderCh,
 	}
-
-	// checks if we can become the leader (cluster of size <= 2)
-	if becomeLeaderFlag := <-becomeLeaderFlagCh; becomeLeaderFlag {
-		// we can become the leader
-		becomeLeaderCh <- becomeLeaderSignal{
-			term: term,
-		}
-	}
-	// else we did not get enough votes to become leader
 
 	// send vote request to all other nodes
 	for nodeID, connData := range node.configurationMap {
@@ -94,7 +82,7 @@ func (node *Node) handleElection(becomeLeaderCh chan becomeLeaderSignal) {
 	}
 }
 
-func (node *Node) askVote(nodeID utils.NodeID, term int, becomeLeaderCh chan becomeLeaderSignal, conn *grpc.ClientConn) {
+func (node *Node) askVote(nodeID utils.NodeID, term int, becomeLeaderCh chan internalUtils.BecomeLeaderSignal, conn *grpc.ClientConn) {
 	client := pb.NewVoteRequestServiceClient(conn)
 
 	req := &pb.VoteRequest{
@@ -114,21 +102,11 @@ func (node *Node) askVote(nodeID utils.NodeID, term int, becomeLeaderCh chan bec
 		successFlag = true
 		if resp.Granted {
 			// we got the vote
-			becomeLeaderFlagCh := make(chan bool)
 			node.voteCount.AddVoteReq <- voteCount.AddVoteSignal{
 				Term:           term,
 				VoterID:        nodeID,
-				BecomeLeaderCh: becomeLeaderFlagCh,
+				BecomeLeaderCh: becomeLeaderCh,
 			}
-
-			if becomeLeaderFlag := <-becomeLeaderFlagCh; becomeLeaderFlag {
-				// become the leader
-				becomeLeaderCh <- becomeLeaderSignal{
-					term: term,
-				}
-				return
-			}
-			// else we did not get enough votes to become leader
 		}
 		// else we do nothing (vote not granted)
 	}

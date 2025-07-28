@@ -3,9 +3,9 @@ package leaderElection
 import (
 	"LeaderElectionGo/leaderElection/electionTimer"
 	"LeaderElectionGo/leaderElection/heartbeatTimer"
+	"LeaderElectionGo/leaderElection/internalUtils"
 	pb "LeaderElectionGo/leaderElection/services/heartbeatRequest/heartbeatRequestService"
 	"LeaderElectionGo/leaderElection/state"
-	"LeaderElectionGo/leaderElection/stopLeadershipSignal"
 	"context"
 	"log"
 
@@ -21,17 +21,17 @@ func (node *Node) handleLeadership(term int) {
 	}
 
 	if success := <-responseCh; success {
-		// successfully set the state to leader
-		log.Printf("Node %s has become the leader for term %d", node.ID, term)
-
 		// stop the election timer
 		node.electionTimer.StopReq <- electionTimer.StopSignal{}
+
+		// successfully set the state to leader
+		log.Printf("Node %s has become the leader for term %d", node.ID, term)
 
 		// set the stopLeadershipCh to allow stopping the leadership
 		if node.stopLeadershipCh != nil {
 			log.Fatal("Error: stopLeadershipCh is not nil, it should be nil before starting leadership, incongruce state.")
 		} else {
-			node.stopLeadershipCh = make(chan stopLeadershipSignal.StopLeadershipSignal)
+			node.stopLeadershipCh = make(chan internalUtils.StopLeadershipSignal)
 		}
 
 		// provide heartbeats

@@ -1,6 +1,7 @@
 package voteCount
 
 import (
+	"LeaderElectionGo/leaderElection/internalUtils"
 	"LeaderElectionGo/leaderElection/utils"
 	"log"
 )
@@ -8,7 +9,7 @@ import (
 type AddVoteSignal struct {
 	Term           int
 	VoterID        utils.NodeID
-	BecomeLeaderCh chan<- bool
+	BecomeLeaderCh chan internalUtils.BecomeLeaderSignal
 }
 type ResetSignal struct {
 	Term int
@@ -74,11 +75,12 @@ func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
 	if voteCount.voteCount > len(voteCount.voterMap)/2 && !voteCount.leaderFlag {
 		log.Printf("Reached majority of votes in the cluster.")
 		voteCount.leaderFlag = true
-		signal.BecomeLeaderCh <- true
+		signal.BecomeLeaderCh <- internalUtils.BecomeLeaderSignal{
+			Term: signal.Term,
+		}
 		return
 	}
-	// not enough votes to become leader yet or already a leader
-	signal.BecomeLeaderCh <- false
+	// not enough votes to become leader yet or already a leader: do nothing
 }
 
 func (voteCount *VoteCount) reset(signal ResetSignal) {

@@ -3,14 +3,14 @@ package state
 import (
 	"LeaderElectionGo/leaderElection/electionTimer"
 	"LeaderElectionGo/leaderElection/heartbeatTimer"
-	"LeaderElectionGo/leaderElection/stopLeadershipSignal"
+	"LeaderElectionGo/leaderElection/internalUtils"
 	"log"
 )
 
 type FollowerSignal struct {
 	HeartbeatTimerRef *heartbeatTimer.HeartbeatTimer
 	ElectionTimerRef  *electionTimer.ElectionTimer
-	StopLeadershipCh  chan<- stopLeadershipSignal.StopLeadershipSignal
+	StopLeadershipCh  chan<- internalUtils.StopLeadershipSignal
 	Term              int
 }
 type CandidateSignal struct {
@@ -64,7 +64,7 @@ func (s *State) setFollower(signal FollowerSignal) {
 			// restart the election timer and
 			signal.ElectionTimerRef.ResetReq <- electionTimer.ResetSignal{}
 			// stop the leadership
-			signal.StopLeadershipCh <- stopLeadershipSignal.StopLeadershipSignal{}
+			signal.StopLeadershipCh <- internalUtils.StopLeadershipSignal{}
 		}
 		s.value = "follower"
 		s.term = signal.Term
