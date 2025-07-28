@@ -14,7 +14,6 @@ import (
 func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb.VoteResponse, error) {
 	// response
 	voteResponse := &pb.VoteResponse{
-		Term: req.Term,
 		// the vote is not granted by default
 		Granted: false,
 	}
