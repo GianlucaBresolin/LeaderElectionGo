@@ -3,7 +3,6 @@ package leaderElection
 import (
 	"LeaderElectionGo/leaderElection/currentLeader"
 	"LeaderElectionGo/leaderElection/electionTimer"
-	"LeaderElectionGo/leaderElection/heartbeatTimer"
 	"LeaderElectionGo/leaderElection/internalUtils"
 	"LeaderElectionGo/leaderElection/myVote"
 	"LeaderElectionGo/leaderElection/state"
@@ -19,15 +18,14 @@ type NodeID string
 type Address string
 
 type Node struct {
-	ID             utils.NodeID
-	address        utils.Address
-	state          *state.State
-	currentTerm    *term.Term
-	electionTimer  *electionTimer.ElectionTimer
-	heartbeatTimer *heartbeatTimer.HeartbeatTimer
-	voteCount      *voteCount.VoteCount
-	myVote         *myVote.MyVote
-	currentLeader  *currentLeader.CurrentLeader
+	ID            utils.NodeID
+	address       utils.Address
+	state         *state.State
+	currentTerm   *term.Term
+	electionTimer *electionTimer.ElectionTimer
+	voteCount     *voteCount.VoteCount
+	myVote        *myVote.MyVote
+	currentLeader *currentLeader.CurrentLeader
 
 	configurationMap map[utils.NodeID]connectionData         // map[nodeID]connectionData
 	stopLeadershipCh chan internalUtils.StopLeadershipSignal // channel to stop leadership
@@ -48,12 +46,11 @@ func NewNode(id NodeID, address Address, addressMap map[NodeID]Address) *Node {
 	}
 
 	node := &Node{
-		ID:             utils.NodeID(id),
-		address:        utils.Address(address),
-		state:          state.NewState(),
-		currentTerm:    term.NewTerm(),
-		electionTimer:  electionTimer.NewElectionTimer(150, 300),
-		heartbeatTimer: heartbeatTimer.NewHeartbeatTimer(10),
+		ID:            utils.NodeID(id),
+		address:       utils.Address(address),
+		state:         state.NewState(),
+		currentTerm:   term.NewTerm(),
+		electionTimer: electionTimer.NewElectionTimer(150, 300),
 		voteCount: voteCount.NewVoteCount(
 			func(addressMap map[NodeID]Address) []utils.NodeID {
 				nodeList := make([]utils.NodeID, 0, len(configurationMap))

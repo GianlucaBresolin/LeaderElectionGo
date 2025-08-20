@@ -50,10 +50,9 @@ func (node *Node) handleElection(becomeLeaderCh chan internalUtils.BecomeLeaderS
 	}
 	if success := <-responseCh; !success {
 		node.state.FollowerCh <- state.FollowerSignal{
-			HeartbeatTimerRef: node.heartbeatTimer,
-			ElectionTimerRef:  node.electionTimer,
-			StopLeadershipCh:  node.stopLeadershipCh,
-			Term:              term,
+			ElectionTimerRef: node.electionTimer,
+			StopLeadershipCh: node.stopLeadershipCh,
+			Term:             term,
 		}
 		return
 	}

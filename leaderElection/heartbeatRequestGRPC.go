@@ -38,10 +38,9 @@ func (node *Node) HeartbeatRequestGRPC(ctx context.Context, req *pb.HeartbeatReq
 		}
 		// revert to follower state
 		node.state.FollowerCh <- state.FollowerSignal{
-			HeartbeatTimerRef: node.heartbeatTimer,
-			ElectionTimerRef:  node.electionTimer,
-			StopLeadershipCh:  node.stopLeadershipCh,
-			Term:              int(req.Term),
+			ElectionTimerRef: node.electionTimer,
+			StopLeadershipCh: node.stopLeadershipCh,
+			Term:             int(req.Term),
 		}
 		// reset my vote
 		node.myVote.ResetReq <- myVote.ResetSignal{

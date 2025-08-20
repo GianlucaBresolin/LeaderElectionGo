@@ -2,15 +2,17 @@ package leaderElection
 
 import (
 	"LeaderElectionGo/leaderElection/electionTimer"
-	"LeaderElectionGo/leaderElection/heartbeatTimer"
 	"LeaderElectionGo/leaderElection/internalUtils"
 	pb "LeaderElectionGo/leaderElection/services/heartbeatRequest/heartbeatRequestService"
 	"LeaderElectionGo/leaderElection/state"
 	"context"
 	"log"
+	"time"
 
 	"google.golang.org/grpc"
 )
+
+const HEARTBEAT_TIMEOUT = 50 * time.Millisecond
 
 func (node *Node) handleLeadership(term int) {
 
@@ -37,16 +39,10 @@ func (node *Node) handleLeadership(term int) {
 		// provide heartbeats
 		node.sendHeartbeats(term)
 
-		// start the heartbeat timer
-		heartbeatTimeoutCh := make(chan heartbeatTimer.HeartbeatTimeoutSignal)
-		node.heartbeatTimer.StartReq <- heartbeatTimer.StartSignal{
-			ResponseCh: heartbeatTimeoutCh,
-		}
-
 		// i := 0
 		for {
 			select {
-			case <-heartbeatTimeoutCh:
+			case <-time.After(HEARTBEAT_TIMEOUT):
 				// i++
 				// if i == 10 {
 				// 	// sleep for a while to allow other leaders
@@ -54,7 +50,6 @@ func (node *Node) handleLeadership(term int) {
 				// 	i = 0 // reset the counter
 				// }
 				// handle heartbeat timeout: send heartbeats to all followers
-				node.heartbeatTimer.ResetReq <- heartbeatTimer.ResetSignal{}
 				node.sendHeartbeats(term)
 			case <-node.stopLeadershipCh:
 				log.Println("Node", node.ID, "stopping leadership for term", term)
@@ -104,10 +99,9 @@ func (node *Node) sendHeartbeat(term int, conn *grpc.ClientConn) {
 		if !resp.Success {
 			// heartbeat was not successful, revert to follower state
 			node.state.FollowerCh <- state.FollowerSignal{
-				HeartbeatTimerRef: node.heartbeatTimer,
-				ElectionTimerRef:  node.electionTimer,
-				StopLeadershipCh:  node.stopLeadershipCh,
-				Term:              term,
+				ElectionTimerRef: node.electionTimer,
+				StopLeadershipCh: node.stopLeadershipCh,
+				Term:             term,
 			}
 		}
 		// else nothing to do, heartbeat was received successfully
