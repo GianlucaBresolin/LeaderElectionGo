@@ -7,15 +7,11 @@ type SetVoteSignal struct {
 	Term       int
 	ResponseCh chan<- bool
 }
-type ResetSignal struct {
-	Term int
-}
 
 type MyVote struct {
 	term       int
 	myVote     utils.NodeID
 	SetVoteReq chan SetVoteSignal
-	ResetReq   chan ResetSignal
 }
 
 func NewMyVote() *MyVote {
@@ -23,7 +19,6 @@ func NewMyVote() *MyVote {
 		myVote:     "",
 		term:       0,
 		SetVoteReq: make(chan SetVoteSignal),
-		ResetReq:   make(chan ResetSignal),
 	}
 
 	go func() {
@@ -31,8 +26,6 @@ func NewMyVote() *MyVote {
 			select {
 			case signal := <-myVote.SetVoteReq:
 				myVote.setVote(signal)
-			case signal := <-myVote.ResetReq:
-				myVote.reset(signal)
 			}
 		}
 	}()
@@ -41,22 +34,13 @@ func NewMyVote() *MyVote {
 }
 
 func (myVote *MyVote) setVote(signal SetVoteSignal) {
-	if signal.Term < myVote.term || (signal.Term == myVote.term && myVote.myVote != "") {
-		// the term is not valid or we already voted in this term
+	if signal.Term < myVote.term || (signal.Term == myVote.term && !(myVote.myVote == "" || myVote.myVote == signal.Vote)) {
+		// the term is not valid or we already voted in this term for someone else
 		signal.ResponseCh <- false
 		return
 	}
-	// set the vote successfully
+	// set the vote successfully (and possibly update the term)
 	myVote.term = signal.Term
 	myVote.myVote = signal.Vote
 	signal.ResponseCh <- true
-}
-
-func (myVote *MyVote) reset(signal ResetSignal) {
-	// reset only if the provided term is greater than the current term
-	if myVote.term < signal.Term {
-		myVote.myVote = ""
-		myVote.term = signal.Term
-	}
-	// else do nothing, we are already in a higher term
 }
