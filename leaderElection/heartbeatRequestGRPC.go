@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 
+	"LeaderElectionGo/leaderElection/allowVotes"
 	"LeaderElectionGo/leaderElection/currentLeader"
 	"LeaderElectionGo/leaderElection/electionTimer"
-	"LeaderElectionGo/leaderElection/myVote"
 	pb "LeaderElectionGo/leaderElection/services/heartbeatRequest/heartbeatRequestService"
 	"LeaderElectionGo/leaderElection/state"
 	"LeaderElectionGo/leaderElection/term"
@@ -32,39 +32,48 @@ func (node *Node) HeartbeatRequestGRPC(ctx context.Context, req *pb.HeartbeatReq
 	case int(req.Term) == currentTerm:
 		// current term matches, proceed to check the leader
 	case int(req.Term) > currentTerm:
-		// new term, update the current term
+		// new term, try to update the current term
+		successSetTermCh := make(chan bool)
 		node.currentTerm.SetTermReq <- term.SetTermSignal{
-			Value: int(req.Term),
+			Value:      int(req.Term),
+			ResponseCh: successSetTermCh,
+		}
+		if success := <-successSetTermCh; !success {
+			// we failed to set the term, i.e., the request has become stale
+			// do not grant success (default)
+			return heartbeatResponse, nil
 		}
 		// revert to follower state
+		successRevertToFollowerCh := make(chan bool)
 		node.state.FollowerCh <- state.FollowerSignal{
-			ElectionTimerRef: node.electionTimer,
-			StopLeadershipCh: node.stopLeadershipCh,
-			Term:             int(req.Term),
+			Term:       int(req.Term),
+			ResponseCh: successRevertToFollowerCh,
 		}
-		// reset my vote
-		node.myVote.ResetReq <- myVote.ResetSignal{
-			Term: int(req.Term),
+		if success := <-successRevertToFollowerCh; success {
+			// reset the election timer
+			node.electionTimer.ResetReq <- electionTimer.ResetSignal{
+				Term: int(req.Term),
+			}
 		}
-		// proceed to set the leader
 	}
 
 	// try to set the currentLeader
-	setCurrentLeaderResponseCh := make(chan string)
+	setCurrentLeaderResponseCh := make(chan currentLeader.CurrentLeaderResponse)
 	node.currentLeader.SetCurrentLeaderReq <- currentLeader.SetCurrentLeaderSignal{
 		Leader:     req.Leader,
+		Term:       int(req.Term),
 		ResponseCh: setCurrentLeaderResponseCh,
 	}
-	currentLeader := <-setCurrentLeaderResponseCh
+	response := <-setCurrentLeaderResponseCh
 
-	if currentLeader == req.Leader {
-		// the current leader is set successfully or was already set to this leader
-		// grant the heartbeat's success
+	if response.Leader == req.Leader && response.Term == int(req.Term) {
 		heartbeatResponse.Success = true
-
+		// disallow votes
+		node.allowVotes.DisallowCh <- allowVotes.DisallowSignal{}
 		// reset the election timer
-		node.electionTimer.ResetReq <- electionTimer.ResetSignal{}
-
+		node.electionTimer.ResetReq <- electionTimer.ResetSignal{
+			Term: int(req.Term),
+		}
 		log.Println("Node", node.ID, ": Heartbeat received from leader:", req.Leader, "for term:", req.Term)
 	}
 	// else not the current leader, do not grant success (default)
