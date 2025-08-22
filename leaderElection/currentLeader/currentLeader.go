@@ -1,9 +1,13 @@
 package currentLeader
 
+type CurrentLeaderResponse struct {
+	Leader string
+	Term   int
+}
 type SetCurrentLeaderSignal struct {
 	Leader     string
 	Term       int
-	ResponseCh chan<- string // channel to send back the current leader
+	ResponseCh chan<- CurrentLeaderResponse
 }
 type ResetSignal struct {
 	Term int
@@ -53,8 +57,11 @@ func (currentLeader *CurrentLeader) setCurrentLeader(signal SetCurrentLeaderSign
 		// stale request, ignore it
 	}
 
-	// provide the current leader as response
-	signal.ResponseCh <- currentLeader.leader
+	// provide the current leader and term as response
+	signal.ResponseCh <- CurrentLeaderResponse{
+		Leader: currentLeader.leader,
+		Term:   currentLeader.term,
+	}
 }
 
 func (currentLeader *CurrentLeader) reset(signal ResetSignal) {
