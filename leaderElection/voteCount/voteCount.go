@@ -1,18 +1,17 @@
 package voteCount
 
 import (
-	"LeaderElectionGo/leaderElection/internalUtils"
 	"LeaderElectionGo/leaderElection/utils"
 	"log"
 )
 
+type BecomeLeaderSignal struct {
+	Term int
+}
 type AddVoteSignal struct {
 	Term           int
 	VoterID        utils.NodeID
-	BecomeLeaderCh chan internalUtils.BecomeLeaderSignal
-}
-type ResetSignal struct {
-	Term int
+	BecomeLeaderCh chan BecomeLeaderSignal
 }
 
 type VoteCount struct {
@@ -21,7 +20,6 @@ type VoteCount struct {
 	voterMap   map[utils.NodeID]bool
 	leaderFlag bool
 	AddVoteReq chan AddVoteSignal
-	ResetReq   chan ResetSignal
 }
 
 func NewVoteCount(configurationList []utils.NodeID) *VoteCount {
@@ -31,7 +29,6 @@ func NewVoteCount(configurationList []utils.NodeID) *VoteCount {
 		voterMap:   make(map[utils.NodeID]bool),
 		leaderFlag: false,
 		AddVoteReq: make(chan AddVoteSignal),
-		ResetReq:   make(chan ResetSignal),
 	}
 
 	// build the voterMap from teh configurationMap
@@ -44,8 +41,6 @@ func NewVoteCount(configurationList []utils.NodeID) *VoteCount {
 			select {
 			case signal := <-voteCount.AddVoteReq:
 				voteCount.addVote(signal)
-			case signal := <-voteCount.ResetReq:
-				voteCount.reset(signal)
 			}
 		}
 	}()
@@ -56,11 +51,11 @@ func NewVoteCount(configurationList []utils.NodeID) *VoteCount {
 func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
 	switch {
 	case signal.Term < voteCount.term:
-		// stale request, do nothing
+		// stale request
 		return
 	case signal.Term > voteCount.term:
 		// new term, proceed to reset the vote count
-		voteCount.reset(ResetSignal{Term: signal.Term})
+		voteCount.reset(signal.Term)
 	default:
 		// signal.Term == voteCount.term: proceed to add the vote
 	}
@@ -75,7 +70,7 @@ func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
 	if voteCount.voteCount > len(voteCount.voterMap)/2 && !voteCount.leaderFlag {
 		log.Printf("Reached majority of votes in the cluster.")
 		voteCount.leaderFlag = true
-		signal.BecomeLeaderCh <- internalUtils.BecomeLeaderSignal{
+		signal.BecomeLeaderCh <- BecomeLeaderSignal{
 			Term: signal.Term,
 		}
 		return
@@ -83,14 +78,11 @@ func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
 	// not enough votes to become leader yet or already a leader: do nothing
 }
 
-func (voteCount *VoteCount) reset(signal ResetSignal) {
-	if signal.Term > voteCount.term {
-		voteCount.term = signal.Term
-		voteCount.voteCount = 0
-		for voterID := range voteCount.voterMap {
-			voteCount.voterMap[voterID] = false
-		}
-		voteCount.leaderFlag = false
+func (voteCount *VoteCount) reset(newTerm int) {
+	voteCount.term = newTerm
+	voteCount.voteCount = 0
+	for voterID := range voteCount.voterMap {
+		voteCount.voterMap[voterID] = false
 	}
-	// else the reset for that term already happened, do nothing
+	voteCount.leaderFlag = false
 }
