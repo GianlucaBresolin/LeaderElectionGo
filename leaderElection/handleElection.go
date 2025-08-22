@@ -19,9 +19,9 @@ const RETRY_DELAY = 20 * time.Millisecond
 
 func (node *Node) handleElection(electionTerm int, becomeLeaderCh chan voteCount.BecomeLeaderSignal) {
 	getStateResponseCh := make(chan state.GetStateResponse)
-	node.state.GetState(state.GetStateSignal{
+	node.state.GetStateCh <- state.GetStateSignal{
 		ResponseCh: getStateResponseCh,
-	})
+	}
 	if response := <-getStateResponseCh; response.State == "leader" {
 		// node is already a leader, no need to start another election
 		return
