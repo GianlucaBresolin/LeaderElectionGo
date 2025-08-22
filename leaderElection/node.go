@@ -1,9 +1,9 @@
 package leaderElection
 
 import (
+	"LeaderElectionGo/leaderElection/allowVotes"
 	"LeaderElectionGo/leaderElection/currentLeader"
 	"LeaderElectionGo/leaderElection/electionTimer"
-	"LeaderElectionGo/leaderElection/internalUtils"
 	"LeaderElectionGo/leaderElection/myVote"
 	"LeaderElectionGo/leaderElection/state"
 	"LeaderElectionGo/leaderElection/term"
@@ -18,17 +18,16 @@ type NodeID string
 type Address string
 
 type Node struct {
-	ID            utils.NodeID
-	address       utils.Address
-	state         *state.State
-	currentTerm   *term.Term
-	electionTimer *electionTimer.ElectionTimer
-	voteCount     *voteCount.VoteCount
-	myVote        *myVote.MyVote
-	currentLeader *currentLeader.CurrentLeader
-
-	configurationMap map[utils.NodeID]connectionData         // map[nodeID]connectionData
-	stopLeadershipCh chan internalUtils.StopLeadershipSignal // channel to stop leadership
+	ID               utils.NodeID
+	address          utils.Address
+	state            *state.State
+	currentTerm      *term.Term
+	electionTimer    *electionTimer.ElectionTimer
+	voteCount        *voteCount.VoteCount
+	myVote           *myVote.MyVote
+	currentLeader    *currentLeader.CurrentLeader
+	allowVotes       *allowVotes.AllowVotes
+	configurationMap map[utils.NodeID]connectionData // map[nodeID]connectionData
 	CloseCh          chan CloseSignal
 
 	pb1.UnimplementedVoteRequestServiceServer
@@ -61,8 +60,8 @@ func NewNode(id NodeID, address Address, addressMap map[NodeID]Address) *Node {
 			}(addressMap)),
 		myVote:           myVote.NewMyVote(),
 		currentLeader:    currentLeader.NewCurrentLeader(),
+		allowVotes:       allowVotes.NewAllowVotes(),
 		configurationMap: configurationMap,
-		stopLeadershipCh: nil, // will be set when the node becomes a leader
 		CloseCh:          make(chan CloseSignal),
 	}
 
@@ -76,20 +75,21 @@ func NewNode(id NodeID, address Address, addressMap map[NodeID]Address) *Node {
 
 func (node *Node) run() {
 	electionTimeoutCh := make(chan electionTimer.ElectionTimeoutSignal)
-	becomeLeaderCh := make(chan internalUtils.BecomeLeaderSignal)
+	becomeLeaderCh := make(chan voteCount.BecomeLeaderSignal)
 
 	go func() {
 		for {
 			select {
-			case <-electionTimeoutCh:
+			case signal := <-electionTimeoutCh:
 				// handle election timout: start a new election
-				go node.handleElection(becomeLeaderCh)
+				go node.handleElection(signal.Term, becomeLeaderCh)
 			case signal := <-becomeLeaderCh:
 				go node.handleLeadership(signal.Term)
 			case <-node.CloseCh:
 				// handle close signal:
 				// close connections to other nodes
 				node.closeConnections()
+				return
 			}
 		}
 	}()
