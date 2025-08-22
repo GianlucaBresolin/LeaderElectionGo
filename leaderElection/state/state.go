@@ -1,18 +1,19 @@
 package state
 
-import (
-	"LeaderElectionGo/leaderElection/electionTimer"
-	"LeaderElectionGo/leaderElection/internalUtils"
-	"log"
-)
-
+type GetStateResponse struct {
+	State string
+	Term  int
+}
+type GetStateSignal struct {
+	ResponseCh chan<- GetStateResponse
+}
 type FollowerSignal struct {
-	ElectionTimerRef *electionTimer.ElectionTimer
-	StopLeadershipCh chan<- internalUtils.StopLeadershipSignal
-	Term             int
+	Term       int
+	ResponseCh chan<- bool
 }
 type CandidateSignal struct {
-	Term int
+	Term       int
+	ResponseCh chan<- bool
 }
 type LeaderSignal struct {
 	Term       int
@@ -22,6 +23,7 @@ type LeaderSignal struct {
 type State struct {
 	term        int
 	value       string
+	GetStateCh  chan GetStateSignal
 	FollowerCh  chan FollowerSignal
 	CandidateCh chan CandidateSignal
 	LeaderCh    chan LeaderSignal
@@ -30,6 +32,7 @@ type State struct {
 func NewState() *State {
 	state := &State{
 		value:       "follower", // initally the state is set to be follwer
+		GetStateCh:  make(chan GetStateSignal),
 		FollowerCh:  make(chan FollowerSignal),
 		CandidateCh: make(chan CandidateSignal),
 		LeaderCh:    make(chan LeaderSignal),
@@ -44,6 +47,8 @@ func NewState() *State {
 				state.setCandidate(signal)
 			case signal := <-state.LeaderCh:
 				state.setLeader(signal)
+			case signal := <-state.GetStateCh:
+				state.GetState(signal)
 			}
 		}
 	}()
@@ -51,21 +56,30 @@ func NewState() *State {
 	return state
 }
 
+func (s *State) GetState(signal GetStateSignal) {
+	signal.ResponseCh <- GetStateResponse{
+		State: s.value,
+		Term:  s.term,
+	}
+}
+
 func (s *State) setFollower(signal FollowerSignal) {
-	if signal.Term >= s.term {
-		if s.value == "leader" {
-			if signal.StopLeadershipCh == nil || signal.ElectionTimerRef == nil {
-				log.Fatal("Error: StopLeadershipCh, HeartbeatTimerRef, or ElectionTimerRef is nil, cannot revert to folloer. (Incongruent state)")
-			}
-			// restart the election timer and
-			signal.ElectionTimerRef.ResetReq <- electionTimer.ResetSignal{}
-			// stop the leadership
-			signal.StopLeadershipCh <- internalUtils.StopLeadershipSignal{}
-		}
+	switch {
+	case signal.Term > s.term:
 		s.value = "follower"
 		s.term = signal.Term
+		signal.ResponseCh <- true
+	case signal.Term == s.term:
+		if s.value != "follower" {
+			s.value = "follower"
+			signal.ResponseCh <- true
+		} else {
+			signal.ResponseCh <- false
+		}
+	default:
+		// else stale request, ignore it
+		signal.ResponseCh <- false
 	}
-	// else stale request, ignore it
 }
 
 func (s *State) setCandidate(signal CandidateSignal) {
@@ -73,13 +87,17 @@ func (s *State) setCandidate(signal CandidateSignal) {
 	case s.term < signal.Term:
 		s.term = signal.Term
 		s.value = "candidate"
+		signal.ResponseCh <- true
 	case s.term == signal.Term:
 		if s.value == "follower" {
 			s.value = "candidate"
+			signal.ResponseCh <- true
 		}
-		// else do nothing, already a candidate or a leader for this term
+		// else already a candidate or a leader for this term
+		signal.ResponseCh <- false
 	default:
-		// stale request, do nothing
+		// stale request
+		signal.ResponseCh <- false
 	}
 }
 
@@ -88,19 +106,19 @@ func (s *State) setLeader(signal LeaderSignal) {
 	case s.term < signal.Term:
 		s.term = signal.Term
 		s.value = "leader"
-		signal.ResponseCh <- true // send true if the term is valid
+		signal.ResponseCh <- true
 		return
 	case s.term == signal.Term:
 		if s.value != "leader" {
 			s.value = "leader"
-			signal.ResponseCh <- true // send true if the term is valid
+			signal.ResponseCh <- true
 			return
 		} else {
-			signal.ResponseCh <- false // already a leader for this term
+			signal.ResponseCh <- false
 			return
 		}
 	default:
-		signal.ResponseCh <- false // send false if the term is not valid
-		return
+		// stale request
+		signal.ResponseCh <- false
 	}
 }
