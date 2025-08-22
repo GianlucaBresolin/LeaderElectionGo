@@ -13,18 +13,26 @@ type SetMaxTimeoutSignal struct {
 	MaxTimeout int
 }
 
-type ElectionTimeoutSignal struct{}
+type ElectionTimeoutSignal struct {
+	Term int
+}
 type StartSignal struct {
 	ResponseCh chan ElectionTimeoutSignal
 }
-type ResetSignal struct{}
-type StopSignal struct{}
+type ResetSignal struct {
+	Term int
+}
+type StopSignal struct {
+	Term       int
+	ResponseCh chan<- bool
+}
 
 type ElectionTimer struct {
 	minElectionTimeout int
 	maxElectionTimeout int
 
 	timer *time.Timer
+	term  int
 
 	SetMinTimeoutReq chan SetMinTimeoutSignal
 	SetMaxTimeoutReq chan SetMaxTimeoutSignal
@@ -44,6 +52,7 @@ func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
 	electionTimer := &ElectionTimer{
 		minElectionTimeout: minTimeout,
 		maxElectionTimeout: maxTimeout,
+		term:               0,
 		SetMinTimeoutReq:   make(chan SetMinTimeoutSignal),
 		SetMaxTimeoutReq:   make(chan SetMaxTimeoutSignal),
 		StartReq:           make(chan StartSignal),
@@ -59,11 +68,11 @@ func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
 			case signal := <-electionTimer.SetMaxTimeoutReq:
 				electionTimer.maxElectionTimeout = signal.MaxTimeout
 			case signal := <-electionTimer.StartReq:
-				electionTimer.start(signal.ResponseCh)
-			case <-electionTimer.ResetReq:
-				electionTimer.reset()
-			case <-electionTimer.StopReq:
-				electionTimer.stop()
+				electionTimer.start(signal)
+			case signal := <-electionTimer.ResetReq:
+				electionTimer.reset(signal)
+			case signal := <-electionTimer.StopReq:
+				electionTimer.stop(signal)
 			}
 		}
 	}()
@@ -71,7 +80,7 @@ func NewElectionTimer(minTimeout, maxTimeout int) *ElectionTimer {
 	return electionTimer
 }
 
-func (electionTimer *ElectionTimer) start(responseCh chan ElectionTimeoutSignal) {
+func (electionTimer *ElectionTimer) start(signal StartSignal) {
 	timeout := rand.Intn(electionTimer.maxElectionTimeout-electionTimer.minElectionTimeout) + electionTimer.minElectionTimeout
 	electionTimer.timer = time.NewTimer(time.Duration(timeout) * time.Millisecond)
 
@@ -79,38 +88,53 @@ func (electionTimer *ElectionTimer) start(responseCh chan ElectionTimeoutSignal)
 		for {
 			<-electionTimer.timer.C
 			// timer has fired, send the timeoutsignal
-			responseCh <- ElectionTimeoutSignal{}
+			signal.ResponseCh <- ElectionTimeoutSignal{
+				Term: electionTimer.term + 1,
+			}
 		}
 	}()
 }
 
-func (electionTimer *ElectionTimer) reset() {
-	if electionTimer.timer != nil {
-		if !electionTimer.timer.Stop() {
-			// drain the channel if the timer has already fired
-			select {
-			case <-electionTimer.timer.C:
-			default:
+func (electionTimer *ElectionTimer) reset(signal ResetSignal) {
+	if signal.Term >= electionTimer.term {
+		if electionTimer.timer != nil {
+			if !electionTimer.timer.Stop() {
+				// drain the channel if the timer has already fired
+				select {
+				case <-electionTimer.timer.C:
+				default:
+				}
 			}
+			// reset the timer with a new random timeout
+			newTimeout := rand.Intn(electionTimer.maxElectionTimeout-electionTimer.minElectionTimeout) + electionTimer.minElectionTimeout
+			electionTimer.timer.Reset(time.Duration(newTimeout) * time.Millisecond)
+		} else {
+			log.Fatal("Timer is not running, cannot reset it")
 		}
-		// reset the timer with a new random timeout
-		newTimeout := rand.Intn(electionTimer.maxElectionTimeout-electionTimer.minElectionTimeout) + electionTimer.minElectionTimeout
-		electionTimer.timer.Reset(time.Duration(newTimeout) * time.Millisecond)
-	} else {
-		log.Fatal("Timer is not running, cannot reset it")
+		// update the term
+		electionTimer.term = signal.Term
 	}
+	// else, stale request, ignore it
 }
 
-func (electionTimer *ElectionTimer) stop() {
-	if electionTimer.timer != nil {
-		if !electionTimer.timer.Stop() {
-			// drain the channel if the timer has already fired
-			select {
-			case <-electionTimer.timer.C:
-			default:
+func (electionTimer *ElectionTimer) stop(signal StopSignal) {
+	if signal.Term >= electionTimer.term {
+		if electionTimer.timer != nil {
+			if !electionTimer.timer.Stop() {
+				// drain the channel if the timer has already fired
+				select {
+				case <-electionTimer.timer.C:
+				default:
+				}
 			}
+			signal.ResponseCh <- true
+		} else {
+			signal.ResponseCh <- false
 		}
+		// update the term
+		electionTimer.term = signal.Term
 	} else {
-		log.Fatal("Timer is not running, cannot stop it")
+		// stale request, ignore it
+		signal.ResponseCh <- false
 	}
 }
