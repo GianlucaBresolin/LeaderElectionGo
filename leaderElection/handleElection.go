@@ -2,7 +2,6 @@ package leaderElection
 
 import (
 	"LeaderElectionGo/leaderElection/electionTimer"
-	"LeaderElectionGo/leaderElection/internalUtils"
 	"LeaderElectionGo/leaderElection/myVote"
 	pb "LeaderElectionGo/leaderElection/services/voteRequest/voteRequestService"
 	"LeaderElectionGo/leaderElection/state"
@@ -16,52 +15,62 @@ import (
 	"google.golang.org/grpc"
 )
 
-const RETRY_DELAY = 20 // milliseconds
+const RETRY_DELAY = 20 * time.Millisecond
 
-func (node *Node) handleElection(becomeLeaderCh chan internalUtils.BecomeLeaderSignal) {
-	log.Println("NODE", node.ID, "START ELECTION")
-	// reset the election timer to resolve split-votes
-	node.electionTimer.ResetReq <- electionTimer.ResetSignal{}
-
-	// increment the current term
-	termCh := make(chan int)
-	node.currentTerm.IncReq <- term.IncrementSignal{
-		ResponseCh: termCh,
+func (node *Node) handleElection(electionTerm int, becomeLeaderCh chan voteCount.BecomeLeaderSignal) {
+	getStateResponseCh := make(chan state.GetStateResponse)
+	node.state.GetState(state.GetStateSignal{
+		ResponseCh: getStateResponseCh,
+	})
+	if response := <-getStateResponseCh; response.State == "leader" {
+		// node is already a leader, no need to start another election
+		return
 	}
-	// get the incremented term
-	term := <-termCh
+
+	log.Println("NODE", node.ID, "START ELECTION")
+
+	// set the term for the election
+	successSetTermCh := make(chan bool)
+	node.currentTerm.SetTermReq <- term.SetTermSignal{
+		Value:      electionTerm,
+		ResponseCh: successSetTermCh,
+	}
+	if success := <-successSetTermCh; !success {
+		// failed to set term, do not proceed
+		return
+	}
+	// else, term is set successfully: valid election
+
+	// reset the election timer to resolve possible split-votes
+	node.electionTimer.ResetReq <- electionTimer.ResetSignal{
+		Term: electionTerm,
+	}
 
 	// become a candidate
+	successCandidateCh := make(chan bool)
 	node.state.CandidateCh <- state.CandidateSignal{
-		Term: term,
+		Term:       electionTerm,
+		ResponseCh: successCandidateCh,
 	}
-
-	// reset the vote count
-	node.voteCount.ResetReq <- voteCount.ResetSignal{
-		Term: term,
+	if success := <-successCandidateCh; !success {
+		// failed to become a candidate, quit election
+		return
 	}
 
 	// vote for myself
 	responseCh := make(chan bool)
 	node.myVote.SetVoteReq <- myVote.SetVoteSignal{
 		Vote:       node.ID,
-		Term:       term,
+		Term:       electionTerm,
 		ResponseCh: responseCh,
 	}
-	if success := <-responseCh; !success {
-		node.state.FollowerCh <- state.FollowerSignal{
-			ElectionTimerRef: node.electionTimer,
-			StopLeadershipCh: node.stopLeadershipCh,
-			Term:             term,
+	if success := <-responseCh; success {
+		// count our vote
+		node.voteCount.AddVoteReq <- voteCount.AddVoteSignal{
+			Term:           electionTerm,
+			VoterID:        node.ID,
+			BecomeLeaderCh: becomeLeaderCh,
 		}
-		return
-	}
-
-	// count our vote
-	node.voteCount.AddVoteReq <- voteCount.AddVoteSignal{
-		Term:           term,
-		VoterID:        node.ID,
-		BecomeLeaderCh: becomeLeaderCh,
 	}
 
 	// send vote request to all other nodes
@@ -77,11 +86,11 @@ func (node *Node) handleElection(becomeLeaderCh chan internalUtils.BecomeLeaderS
 		}
 
 		// send vote request (in parallel)
-		go node.askVote(nodeID, term, becomeLeaderCh, conn)
+		go node.askVote(nodeID, electionTerm, becomeLeaderCh, conn)
 	}
 }
 
-func (node *Node) askVote(nodeID utils.NodeID, term int, becomeLeaderCh chan internalUtils.BecomeLeaderSignal, conn *grpc.ClientConn) {
+func (node *Node) askVote(nodeID utils.NodeID, term int, becomeLeaderCh chan voteCount.BecomeLeaderSignal, conn *grpc.ClientConn) {
 	client := pb.NewVoteRequestServiceClient(conn)
 
 	req := &pb.VoteRequest{
@@ -94,13 +103,15 @@ func (node *Node) askVote(nodeID utils.NodeID, term int, becomeLeaderCh chan int
 		resp, err := client.VoteRequestGRPC(context.Background(), req)
 		if err != nil {
 			log.Printf("Error sending vote request to node %s: %v. Retrying...", nodeID, err)
-			time.Sleep(RETRY_DELAY * time.Millisecond) // avoid busy looping
-			continue                                   // retry sending vote request
+			// avoid busy looping
+			time.Sleep(RETRY_DELAY)
+			// retry sending vote request
+			continue
 		}
 		// the node responded
 		successFlag = true
 		if resp.Granted {
-			// we got the vote
+			// we got the vote: count it
 			node.voteCount.AddVoteReq <- voteCount.AddVoteSignal{
 				Term:           term,
 				VoterID:        nodeID,
