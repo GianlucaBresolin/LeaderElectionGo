@@ -65,19 +65,15 @@ func (s *State) GetState(signal GetStateSignal) {
 
 func (s *State) setFollower(signal FollowerSignal) {
 	switch {
-	case signal.Term > s.term:
+	case signal.Term >= s.term:
+		if s.term == signal.Term && s.value == "follower" {
+			signal.ResponseCh <- false
+		}
 		s.value = "follower"
 		s.term = signal.Term
 		signal.ResponseCh <- true
-	case signal.Term == s.term:
-		if s.value != "follower" {
-			s.value = "follower"
-			signal.ResponseCh <- true
-		} else {
-			signal.ResponseCh <- false
-		}
 	default:
-		// else stale request, ignore it
+		// stale request
 		signal.ResponseCh <- false
 	}
 }
