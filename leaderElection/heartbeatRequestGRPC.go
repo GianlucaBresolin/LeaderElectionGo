@@ -41,6 +41,12 @@ func (node *Node) HeartbeatRequestGRPC(ctx context.Context, req *pb.HeartbeatReq
 		if success := <-successSetTermCh; !success {
 			// we failed to set the term, i.e., the request has become stale
 			// do not grant success (default)
+			termResponseCh := make(chan int)
+			node.currentTerm.GetTermReq <- term.GetTermSignal{
+				ResponseCh: termResponseCh,
+			}
+			latestTerm := <-termResponseCh
+			heartbeatResponse.Term = int32(latestTerm)
 			return heartbeatResponse, nil
 		}
 		// revert to follower state

@@ -16,20 +16,24 @@ import (
 const HEARTBEAT_TIMEOUT = 50 * time.Millisecond
 
 func (node *Node) handleLeadership(leadershipTerm int) {
-	responseCh := make(chan bool)
-	node.state.LeaderCh <- state.LeaderSignal{
+	// stop the election timer
+	stopElectionTimerCh := make(chan bool)
+	node.electionTimer.StopReq <- electionTimer.StopSignal{
 		Term:       leadershipTerm,
-		ResponseCh: responseCh,
+		ResponseCh: stopElectionTimerCh,
 	}
-	if success := <-responseCh; success {
-		// stop the election timer
-		stopElectionTimerCh := make(chan bool)
-		node.electionTimer.StopReq <- electionTimer.StopSignal{
+	if success := <-stopElectionTimerCh; success {
+		// set state to leader
+		setLeaderResponseCh := make(chan bool)
+		node.state.LeaderCh <- state.LeaderSignal{
 			Term:       leadershipTerm,
-			ResponseCh: stopElectionTimerCh,
+			ResponseCh: setLeaderResponseCh,
 		}
-		if success := <-stopElectionTimerCh; !success {
-			// failed to stop the election timer, do not proceed
+		if success := <-setLeaderResponseCh; !success {
+			// failed to set state to leader, reset election timer and exit
+			node.electionTimer.ResetReq <- electionTimer.ResetSignal{
+				Term: leadershipTerm,
+			}
 			return
 		}
 
@@ -109,21 +113,25 @@ func (node *Node) sendHeartbeat(leadershipTerm int, conn *grpc.ClientConn) {
 		}
 		successFlag = true
 		if !resp.Success {
-			// heartbeat was not successful, revert to follower state
-			successRevertToFollowerCh := make(chan bool)
-			node.state.FollowerCh <- state.FollowerSignal{
-				Term:       int(resp.Term),
-				ResponseCh: successRevertToFollowerCh,
-			}
-			if success := <-successRevertToFollowerCh; success {
-				// reset the election timer
-				node.electionTimer.ResetReq <- electionTimer.ResetSignal{
-					Term: int(resp.Term),
-				}
-			}
-			// try to update our term
+			// heartbeat was not successful, try to update the term and revert to follower state
+			successSetTermCh := make(chan bool)
 			node.currentTerm.SetTermReq <- term.SetTermSignal{
-				Value: int(resp.Term),
+				Value:      int(resp.Term),
+				ResponseCh: successSetTermCh,
+			}
+			if success := <-successSetTermCh; success {
+				// revert to follower state
+				successRevertToFollowerCh := make(chan bool)
+				node.state.FollowerCh <- state.FollowerSignal{
+					Term:       int(resp.Term),
+					ResponseCh: successRevertToFollowerCh,
+				}
+				if success := <-successRevertToFollowerCh; success {
+					// reset the election timer
+					node.electionTimer.ResetReq <- electionTimer.ResetSignal{
+						Term: int(resp.Term),
+					}
+				}
 			}
 		}
 		// else nothing to do, heartbeat was received successfully
