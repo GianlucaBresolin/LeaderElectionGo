@@ -7,7 +7,7 @@ import (
 	"LeaderElectionGo/leaderElection/state"
 	"LeaderElectionGo/leaderElection/term"
 	"context"
-	"log"
+	"fmt"
 	"time"
 
 	"google.golang.org/grpc"
@@ -41,7 +41,7 @@ func (node *Node) handleLeadership(leadershipTerm int) {
 		node.allowVotes.StopCh <- allowVotes.StopSignal{}
 
 		// successfully set the state to leader
-		log.Printf("Node %s has become the leader for term %d", node.ID, leadershipTerm)
+		fmt.Printf("NODE %s HAS BECOME THE LEADER FOR TERM %d \n", node.ID, leadershipTerm)
 
 		// provide heartbeats
 		node.sendHeartbeats(leadershipTerm)
@@ -64,7 +64,7 @@ func (node *Node) handleLeadership(leadershipTerm int) {
 				}
 				if response := <-getStateResponseCh; !(response.State == "leader" && response.Term == leadershipTerm) {
 					// quit leadership: we are no longer the leader
-					log.Println("Node", node.ID, "stopping leadership for term", leadershipTerm)
+					fmt.Printf("Node %s stopping leadership for term %d \n", node.ID, leadershipTerm)
 					// restart the allow votes mechanism
 					node.allowVotes.RestartCh <- allowVotes.RestartSignal{}
 					return
@@ -86,7 +86,7 @@ func (node *Node) sendHeartbeats(leadershipTerm int) {
 
 		conn := connData.connection
 		if conn == nil {
-			log.Printf("Error node %s: connection to node %s is nil.", node.ID, nodeID)
+			fmt.Printf("Error node %s: connection to node %s is nil.", node.ID, nodeID)
 			continue
 		}
 
@@ -107,7 +107,7 @@ func (node *Node) sendHeartbeat(leadershipTerm int, conn *grpc.ClientConn) {
 	for !successFlag {
 		resp, err := client.HeartbeatRequestGRPC(context.Background(), req)
 		if err != nil {
-			log.Printf("Error sending heartbeat to node: %v. Retrying...", err)
+			fmt.Printf("Error sending heartbeat to node: %v. Retrying...", err)
 			// retry sending heartbeat
 			continue
 		}

@@ -2,12 +2,12 @@ package main
 
 import (
 	"LeaderElectionGo/leaderElection"
-	"log"
+	"fmt"
 	"os"
 )
 
 func main() {
-	log.Println("Starting Node...")
+	fmt.Println("Starting Node...")
 
 	// build the configuration map from command line arguments
 	peers := make(map[leaderElection.NodeID]leaderElection.Address)

@@ -2,7 +2,7 @@ package voteCount
 
 import (
 	"LeaderElectionGo/leaderElection/utils"
-	"log"
+	"fmt"
 )
 
 type BecomeLeaderSignal struct {
@@ -68,7 +68,7 @@ func (voteCount *VoteCount) addVote(signal AddVoteSignal) {
 	voteCount.voterMap[signal.VoterID] = true
 
 	if voteCount.voteCount > len(voteCount.voterMap)/2 && !voteCount.leaderFlag {
-		log.Printf("Reached majority of votes in the cluster.")
+		fmt.Printf("Reached majority of votes in the cluster.\n")
 		voteCount.leaderFlag = true
 		signal.BecomeLeaderCh <- BecomeLeaderSignal{
 			Term: signal.Term,

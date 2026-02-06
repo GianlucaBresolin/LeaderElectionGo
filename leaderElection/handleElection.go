@@ -9,7 +9,7 @@ import (
 	"LeaderElectionGo/leaderElection/utils"
 	"LeaderElectionGo/leaderElection/voteCount"
 	"context"
-	"log"
+	"fmt"
 	"time"
 
 	"google.golang.org/grpc"
@@ -27,7 +27,7 @@ func (node *Node) handleElection(electionTerm int, becomeLeaderCh chan voteCount
 		return
 	}
 
-	log.Println("NODE", node.ID, "START ELECTION")
+	fmt.Printf("NODE %s START ELECTION FOR TERM %d \n", node.ID, electionTerm)
 
 	// set the term for the election
 	successSetTermCh := make(chan bool)
@@ -81,7 +81,7 @@ func (node *Node) handleElection(electionTerm int, becomeLeaderCh chan voteCount
 
 		conn := connData.connection
 		if conn == nil {
-			log.Printf("Error node %s: connection to node %s is nil.", node.ID, nodeID)
+			fmt.Printf("Error node %s: connection to node %s is nil.", node.ID, nodeID)
 			continue
 		}
 
@@ -102,7 +102,7 @@ func (node *Node) askVote(nodeID utils.NodeID, term int, becomeLeaderCh chan vot
 	for !successFlag {
 		resp, err := client.VoteRequestGRPC(context.Background(), req)
 		if err != nil {
-			log.Printf("Error sending vote request to node %s: %v. Retrying...", nodeID, err)
+			fmt.Printf("Error sending vote request to node %s: %v. Retrying...", nodeID, err)
 			// avoid busy looping
 			time.Sleep(RETRY_DELAY)
 			// retry sending vote request

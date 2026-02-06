@@ -2,7 +2,7 @@ package leaderElection
 
 import (
 	"context"
-	"log"
+	"fmt"
 
 	"LeaderElectionGo/leaderElection/allowVotes"
 	"LeaderElectionGo/leaderElection/currentLeader"
@@ -28,6 +28,7 @@ func (node *Node) HeartbeatRequestGRPC(ctx context.Context, req *pb.HeartbeatReq
 	switch {
 	case int(req.Term) < currentTerm:
 		// stale request, do not grant success (default)
+		fmt.Printf("Heartbeat denied to leader %s for term %d. \n", req.Leader, req.Term)
 		return heartbeatResponse, nil
 	case int(req.Term) == currentTerm:
 		// current term matches, proceed to check the leader
@@ -47,6 +48,7 @@ func (node *Node) HeartbeatRequestGRPC(ctx context.Context, req *pb.HeartbeatReq
 			}
 			latestTerm := <-termResponseCh
 			heartbeatResponse.Term = int32(latestTerm)
+			fmt.Printf("Heartbeat denied to leader %s for term %d. \n", req.Leader, req.Term)
 			return heartbeatResponse, nil
 		}
 		// revert to follower state
@@ -80,8 +82,12 @@ func (node *Node) HeartbeatRequestGRPC(ctx context.Context, req *pb.HeartbeatReq
 		node.electionTimer.ResetReq <- electionTimer.ResetSignal{
 			Term: int(req.Term),
 		}
-		log.Println("Node", node.ID, ": Heartbeat received from leader:", req.Leader, "for term:", req.Term)
 	}
 	// else not the current leader, do not grant success (default)
+	if heartbeatResponse.Success {
+		fmt.Printf("Heartbeat granted to leader %s for term %d. \n", req.Leader, req.Term)
+	} else {
+		fmt.Printf("Heartbeat denied to leader %s for term %d. \n", req.Leader, req.Term)
+	}
 	return heartbeatResponse, nil
 }

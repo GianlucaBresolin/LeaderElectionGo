@@ -2,7 +2,7 @@ package leaderElection
 
 import (
 	"context"
-	"log"
+	"fmt"
 
 	"LeaderElectionGo/leaderElection/allowVotes"
 	"LeaderElectionGo/leaderElection/electionTimer"
@@ -72,6 +72,10 @@ func (node *Node) VoteRequestGRPC(ctx context.Context, req *pb.VoteRequest) (*pb
 		}
 		// else do nothing (vote not granted)
 	}
-	log.Println("NODE", node.ID, "VOTE REQUEST FROM NODE", req.CandidateId, "FOR TERM", req.Term, "GRANTED:", voteResponse.Granted)
+	if voteResponse.Granted {
+		fmt.Printf("Node granted vote to node %s for term %d. \n", req.CandidateId, req.Term)
+	} else {
+		fmt.Printf("Node denied vote to node %s for term %d. \n", req.CandidateId, req.Term)
+	}
 	return voteResponse, nil
 }

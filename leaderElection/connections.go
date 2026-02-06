@@ -1,6 +1,7 @@
 package leaderElection
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -38,7 +39,7 @@ func (node *Node) prepareServer() {
 			log.Fatalf("Error %s serving gRPC server: %v.", node.ID, err)
 		}
 	}()
-	log.Printf("Node %s is listening on %s.", node.ID, node.address)
+	fmt.Printf("Node %s is listening on %s.\n", node.ID, node.address)
 }
 
 func (node *Node) prepareConnections() {
@@ -57,7 +58,7 @@ func (node *Node) prepareConnections() {
 			}
 			// Successfully connected
 			successFlag = true
-			log.Printf("Node %s connected to node %s.", node.ID, nodeID)
+			fmt.Printf("Node %s connected to node %s.\n", node.ID, nodeID)
 
 			node.configurationMap[nodeID] = connectionData{
 				address:    connData.address,
@@ -76,12 +77,12 @@ func (node *Node) closeConnections() {
 		closeFlag := false
 		for !closeFlag {
 			if err := connData.connection.Close(); err != nil {
-				log.Printf("Failed to close connection to node %s: %v.", nodeID, err)
+				fmt.Printf("Failed to close connection to node %s: %v.", nodeID, err)
 				continue
 			}
 			// Successfully closed the connection
 			closeFlag = true
-			log.Printf("Node %s closed connection to node %s.", node.ID, nodeID)
+			fmt.Printf("Node %s closed connection to node %s.", node.ID, nodeID)
 		}
 	}
 }
